@@ -16,6 +16,7 @@ Planera is a construction scheduling and project-planning platform. Its relevant
 
 Planera does provide a mobile experience for those in the field. Our system will focus on this component of the system. Users will be able to see their assigned tasks, complete or check off work, and provide information about completed work. Both mobile experiences emphasize making field work information accessible at the worksite rather than requiring workers to return to an office. Planera's field schedules similarly allow users to update progress and track the status of field activities.
 
+The most significant differences between Planera and our application are the scope and the intended user. Planera is a scheduling and project-management platform. It provides features such as schedules, dependencies, resource planning, and critical-path analysis. Our system does not include scheduling or planning. Instead, tasks are assigned to field workers, who are responsible for completing and documenting those tasks. Planera has a holistic approach to project management. Our application will only focus on those completing the tasks.
 
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
