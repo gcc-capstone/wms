@@ -18,7 +18,7 @@ Planera does provide a mobile experience for those in the field. Our system will
 
 The most significant differences between Planera and our application are the scope and the intended user. Planera is a scheduling and project-management platform. It provides features such as schedules, dependencies, resource planning, and critical-path analysis. Our system does not include scheduling or planning. Instead, tasks are assigned to field workers, who are responsible for completing and documenting those tasks. Planera has a holistic approach to project management. Our application will only focus on those completing the tasks. Our system is also designed specifically around mobile task execution while this is only one aspect of Planera.
 
-An important capability for our application is offline task completion. If a worker loses connectivity at the worksite, they can still complete and check off tasks. This allows the core workflow to continue even when reliable internet access is unavailable. Planera does not support this kind of synchronization.
+An important capability for our application is offline task completion. If a worker loses connectivity at the worksite, they can still complete and check off tasks. This allows the core workflow to continue even when reliable internet access is unavailable. Planera does not support this kind of synchronization. This emphasizes our focus on those working in the field. The system is not designed for streamlined planning and scheduling. It is designed to enable the field workers to complete tasks efficiently, wherever they may be.
 
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
