@@ -10,14 +10,11 @@ text
 
 ### Related Work
 
-[Planera](https://www.planera.io/) is a construction scheduling software. 
-It supports planning, field scheduling, and quality checks. 
-The quality checks are similar to the safety checklist our application will have for each task.
-It is similar to our application where field workers and check things off.
-However, it is geared more toward planners.
-It's focus is on scheduling efficiently, not on the individuals completing the task.
-Our application will focus more the users and helping them complete tasks.
+## Planera
+
+Planera is a construction scheduling and project-planning platform. Its relevant features for our system are its focus on field execution, task-level progress tracking, and connecting office planning with work performed in the field. Planera allows field users to view schedules, update progress, and monitor changes from the jobsite. It also provides a mobile/iPad experience so field personnel can interact with project information while working.
+
 
 
 ### Bibliography
-text
+Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
