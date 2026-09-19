@@ -24,6 +24,9 @@ An important capability for our application is offline task completion. If a wor
 
 FieldAware is a field-service management platform designed around mobile workers completing assigned jobs. Its mobile application allows field personnel to receive assigned jobs, view job and task information, update job status, capture photos and other documentation, and complete work from an Android or iOS device. FieldAware also supports offline operation, allowing field workers to continue working when a network connection is unavailable.
 
+Our system will share many of FieldAware's core field-work interactions. Users will be able to view assigned tasks, complete or check off tasks, track task status, and upload photos documenting their work. Both applications are designed around giving field workers the information they need directly on a mobile device rather than requiring them to return to an office. FieldAware's mobile application also allows workers to access assigned jobs and update their status from the field. They both will support offline synchronization capabilities.
+
+
 
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
