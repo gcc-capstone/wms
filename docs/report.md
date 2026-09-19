@@ -32,6 +32,8 @@ Our system is more narrowly focused on employees completing assigned work within
 
 ### Siemens COMOS Mobile Worker
 
+COMOS Mobile Worker provides a mobile interface for workers performing maintenance and inspection activities in industrial environments. Relevant features include task assignments, mobile inspection and safety checklists, photo/video documentation, task-status updates, and offline operation. Siemens specifically describes the application as supporting maintenance tasks, inspection tours, safety checks, and task assignments from mobile devices.
+
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
 
