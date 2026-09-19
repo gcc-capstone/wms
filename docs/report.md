@@ -33,10 +33,10 @@ Yusef is working offline on the same pump inspection task that Benkamin made a S
 Dave is a WMS Mobile user with an administrative role and has just gotten a text that an android device with WMS mobile was stolen. He is currently away from his work computer but has WMS mobile on his phone. He quickly opens it and disables mobile access for the user.
 
 //sign out
-**
+Janelle is in the middle of a work day when she is alerted to her authentication expiring. She logs back in for the rest of the day, and then signs out of WMS mobile once finished with work.
 
-//failed image upload
-**
+//failed image and checklist changes
+Myron takes a picture of a leaky ceiling to attach to one of his tasks when offline, and sees that it's pending. He also completes the task checklist and submits it. Later when online, he sees that the image failed to upload and the checklist changes failed. He retries both changes using the saved local changes on his device, and the submission is sucessful.
 
 //task changed while offline
 **
