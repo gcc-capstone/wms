@@ -30,7 +30,11 @@ The primary difference is the scope of the applications and the type of work bei
 
 Our system is more narrowly focused on employees completing assigned work within an industrial field environment. Workers will receive their tasks rather than create or manage schedules. The application will focus on completing tasks, documenting work through photographs, tracking task status, and completing safety checklists. A lot of functionality such as customer management, routing, invoicing, and broader scheduling and dispatching is outside the scope of our system.
 
+### Siemens COMOS Mobile Worker
+
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
 
 FieldAware by GPS Insight. “Best Field Service Management Software & Mobile App.,” November 14, 2025. https://www.fieldaware.com/.
+
+Siemens. “Why COMOS Mobile Worker?,” n.d. https://www.siemens.com/en-us/products/comos/mobile-worker/.
