@@ -39,7 +39,7 @@ Janelle is in the middle of a work day when she is alerted to her authentication
 Myron takes a picture of a leaky ceiling to attach to one of his tasks when offline, and sees that it's pending. He also completes the task checklist and submits it. Later when online, he sees that the image failed to upload and the checklist changes failed. He retries both changes using the saved local changes on his device, and the submission is sucessful.
 
 //task changed while offline
-**
+Erin is offline working on a downloaded task which is assigned to multiple users. While offline, the task is completed by a different user and submitted to WMS. When Erin is back online, she sees an error message and stops working on the task.
 
 
 
