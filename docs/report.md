@@ -46,6 +46,9 @@ Our application has a narrower purpose. Workers receive assigned tasks and focus
 
 Fieldwire is a construction jobsite management software designed to connect field and office teams. Its relevant features for our system include task assignment and tracking, checklists, inspections, photos and videos, safety issues, and mobile access. Fieldwire describes its tasks as being used for work progress, inspections, safety issues, QA/QC issues, and other work that needs to be completed at the jobsite. Field workers can complete these tasks through Android and iOS mobile applications.
 
+Our system will share several of Fieldwire's core field capabilities. Users will be able to view assigned tasks, complete or check off tasks, track task status, upload photos, and complete safety checklists. Both systems are also designed around mobile use at the worksite. Fieldwire supports Android and allows workers to access and update project information from their mobile devices.
+
+Another important similarity is offline functionality. Fieldwire allows users to work offline, including completing inspections and taking photos, and automatically synchronizes updated information after the device reconnects. Our system will use a similar approach: when a worker is offline, they can still check off assigned tasks, and those changes will synchronize with the server once connectivity is restored.
 
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
