@@ -26,7 +26,9 @@ FieldAware is a field-service management platform designed around mobile workers
 
 Our system will share many of FieldAware's core field-work interactions. Users will be able to view assigned tasks, complete or check off tasks, track task status, and upload photos documenting their work. Both applications are designed around giving field workers the information they need directly on a mobile device rather than requiring them to return to an office. FieldAware's mobile application also allows workers to access assigned jobs and update their status from the field. They both will support offline synchronization capabilities.
 
+The primary difference is the scope of the applications and the type of work being managed. FieldAware is a broader field-service management platform. In addition to mobile task execution, it provides scheduling and dispatching, customer and equipment information, GPS and routing, time tracking, work-order management, invoicing, and other features for managing an entire field-service operation.
 
+Our system is more narrowly focused on employees completing assigned work within an industrial field environment. Workers will receive their tasks rather than create or manage schedules. The application will focus on completing tasks, documenting work through photographs, tracking task status, and completing safety checklists. A lot of functionality such as customer management, routing, invoicing, and broader scheduling and dispatching is outside the scope of our system.
 
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
