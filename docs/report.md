@@ -34,6 +34,14 @@ Our system is more narrowly focused on employees completing assigned work within
 
 COMOS Mobile Worker provides a mobile interface for workers performing maintenance and inspection activities in industrial environments. Relevant features include task assignments, mobile inspection and safety checklists, photo/video documentation, task-status updates, and offline operation. Siemens specifically describes the application as supporting maintenance tasks, inspection tours, safety checks, and task assignments from mobile devices.
 
+Our system will have a similar focus on field employees completing assigned work from a mobile device. Users will be able to view their assigned tasks, update task status, check off completed work, upload photos, and complete safety checklists. Like COMOS Mobile Worker, our application will allow workers to perform these activities at the worksite rather than requiring them to return to an office.
+
+Offline functionality is another major similarity. COMOS Mobile Worker supports offline operation and automatically synchronizes information when a connection becomes available. Our system will similarly allow users to check off tasks while offline and synchronize those changes with the server once they reconnect.
+
+The main difference is the scope of the information surrounding the worker's tasks. COMOS Mobile Worker is part of Siemens' broader COMOS industrial engineering and plant-management ecosystem. It can provide workers with access to equipment history, technical documentation, asset information, and integrations with other systems.
+
+Our application has a narrower purpose. Workers receive assigned tasks and focus on completing and documenting those tasks. The system will not attempt to provide the broader engineering, asset-management, or enterprise-system functionality associated with COMOS. Our interface will instead concentrate on the immediate workflow of the employee performing the assigned work.
+
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
 
