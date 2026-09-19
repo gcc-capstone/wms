@@ -42,9 +42,13 @@ The main difference is the scope of the information surrounding the worker's tas
 
 Our application has a narrower purpose. Workers receive assigned tasks and focus on completing and documenting those tasks. The system will not attempt to provide the broader engineering, asset-management, or enterprise-system functionality associated with COMOS. Our interface will instead concentrate on the immediate workflow of the employee performing the assigned work.
 
+### Fieldwire
+
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
 
 FieldAware by GPS Insight. “Best Field Service Management Software & Mobile App.,” November 14, 2025. https://www.fieldaware.com/.
 
 Siemens. “Why COMOS Mobile Worker?,” n.d. https://www.siemens.com/en-us/products/comos/mobile-worker/.
+
+Fieldwire by Hilti. “Real-Time Jobsite Management Software | Fieldwire by Hilti | Fieldwire by Hilti,” n.d. https://www.fieldwire.com/.
