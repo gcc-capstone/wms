@@ -10,7 +10,7 @@ text
 
 ### Related Work
 
-## Planera
+#### Planera
 
 Planera is a construction scheduling and project-planning platform. Its relevant features for our system are its focus on field execution, task-level progress tracking, and connecting office planning with work performed in the field. Planera allows field users to view schedules, update progress, and monitor changes from the jobsite. It also provides a mobile/iPad experience so field personnel can interact with project information while working.
 
@@ -20,5 +20,9 @@ The most significant differences between Planera and our application are the sco
 
 An important capability for our application is offline task completion. If a worker loses connectivity at the worksite, they can still complete and check off tasks. This allows the core workflow to continue even when reliable internet access is unavailable. Planera does not support this kind of synchronization. This emphasizes our focus on those working in the field. The system is not designed for streamlined planning and scheduling. It is designed to enable the field workers to complete tasks efficiently, wherever they may be.
 
+#### FieldAware
+
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
+
+FieldAware by GPS Insight. “Best Field Service Management Software & Mobile App.,” November 14, 2025. https://www.fieldaware.com/.
