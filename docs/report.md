@@ -50,6 +50,12 @@ Our system will share several of Fieldwire's core field capabilities. Users will
 
 Another important similarity is offline functionality. Fieldwire allows users to work offline, including completing inspections and taking photos, and automatically synchronizes updated information after the device reconnects. Our system will use a similar approach: when a worker is offline, they can still check off assigned tasks, and those changes will synchronize with the server once connectivity is restored.
 
+The primary difference is the scope of the application and the workflow surrounding tasks. Fieldwire is a broad construction management platform. In addition to tasks, it provides access to construction drawings, plan markups, as-builts, forms, reports, scheduling, and communication between project participants.
+
+Our application will have a much narrower focus. Workers receive assigned tasks and complete them. They will not be responsible for creating project schedules, managing construction drawings, coordinating project participants, or managing the broader project. Our system instead focuses on the actions directly associated with completing assigned field work.
+
+There is also a difference in the intended environment. Fieldwire is specifically designed for construction teams and jobsites, while our system is being developed for employees performing field work for a company in the industrial sector. Although the environments differ, many of the representative tasks completing assigned work, documenting that work, performing inspections or safety checks, and updating task status are similar.
+
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
 
