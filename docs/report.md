@@ -22,9 +22,9 @@ An important capability for our application is offline task completion. If a wor
 
 #### FieldAware
 
-FieldAware is a field-service management platform designed around mobile workers completing assigned jobs. Its mobile application allows field personnel to receive assigned jobs, view job and task information, update job status, capture photos and other documentation, and complete work from an Android or iOS device. FieldAware also supports offline operation, allowing field workers to continue working when a network connection is unavailable.
+FieldAware is a field-service management platform designed around mobile workers completing assigned jobs. Its mobile application allows field personnel to receive assigned jobs, view job and task information, update job status, capture photos and other documentation, and complete work from an Android or iOS device. FieldAware also supports offline operation, allowing fieldworkers to continue working when a network connection is unavailable.
 
-Our system will share many of FieldAware's core field-work interactions. Users will be able to view assigned tasks, complete or check off tasks, track task status, and upload photos documenting their work. Both applications are designed around giving field workers the information they need directly on a mobile device rather than requiring them to return to an office. FieldAware's mobile application also allows workers to access assigned jobs and update their status from the field. They both will support offline synchronization capabilities.
+Our system will share many of FieldAware's core field-work interactions. Users will be able to view assigned tasks, complete or check off tasks, track task status, and upload photos documenting their work. Both applications are designed around giving fieldworkers the information they need directly on a mobile device rather than requiring them to return to an office. FieldAware's mobile application also allows workers to access assigned jobs and update their status from the field. They both will support offline synchronization capabilities.
 
 The primary difference is the scope of the applications and the type of work being managed. FieldAware is a broader field-service management platform. In addition to mobile task execution, it provides scheduling and dispatching, customer and equipment information, GPS and routing, time tracking, work-order management, invoicing, and other features for managing an entire field-service operation.
 
@@ -44,7 +44,7 @@ Our application has a narrower purpose. Workers receive assigned tasks and focus
 
 ### Fieldwire
 
-Fieldwire is a construction jobsite management software designed to connect field and office teams. Its relevant features for our system include task assignment and tracking, checklists, inspections, photos and videos, safety issues, and mobile access. Fieldwire describes its tasks as being used for work progress, inspections, safety issues, QA/QC issues, and other work that needs to be completed at the jobsite. Field workers can complete these tasks through Android and iOS mobile applications.
+Fieldwire is a construction jobsite management software designed to connect field and office teams. Its relevant features for our system include task assignment and tracking, checklists, inspections, photos and videos, safety issues, and mobile access. Fieldwire describes its tasks as being used for work progress, inspections, safety issues, QA/QC issues, and other work that needs to be completed at the jobsite. Fieldworkers can complete these tasks through Android and iOS mobile applications.
 
 Our system will share several of Fieldwire's core field capabilities. Users will be able to view assigned tasks, complete or check off tasks, track task status, upload photos, and complete safety checklists. Both systems are also designed around mobile use at the worksite. Fieldwire supports Android and allows workers to access and update project information from their mobile devices.
 
@@ -52,9 +52,9 @@ Another important similarity is offline functionality. Fieldwire allows users to
 
 The primary difference is the scope of the application and the workflow surrounding tasks. Fieldwire is a broad construction management platform. In addition to tasks, it provides access to construction drawings, plan markups, as-builts, forms, reports, scheduling, and communication between project participants.
 
-Our application will have a much narrower focus. Workers receive assigned tasks and complete them. They will not be responsible for creating project schedules, managing construction drawings, coordinating project participants, or managing the broader project. Our system instead focuses on the actions directly associated with completing assigned field work.
+Our application will have a much narrower focus. Workers receive assigned tasks and complete them. They will not be responsible for creating project schedules, managing construction drawings, coordinating project participants, or managing the broader project. Our system instead focuses on the actions directly associated with completing assigned fieldwork.
 
-There is also a difference in the intended environment. Fieldwire is specifically designed for construction teams and jobsites, while our system is being developed for employees performing field work for a company in the industrial sector. Although the environments differ, many of the representative tasks completing assigned work, documenting that work, performing inspections or safety checks, and updating task status are similar.
+There is also a difference in the intended environment. Fieldwire is specifically designed for construction teams and jobsites, while our system is being developed for employees performing fieldwork for a company in the industrial sector. Although the environments differ, many of the representative tasks completing assigned work, documenting that work, performing inspections or safety checks, and updating task status are similar.
 
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
