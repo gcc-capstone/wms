@@ -1,5 +1,12 @@
 ### Cover
-text and images
+
+WMS Mobile
+
+![logo](./logo.png)
+
+9/24/2026
+
+Luca Cosentino, Hudson Hadley, Anna Hutchins, Luke Murray under the direction of Dr. Ethan Johnson.
 
 ### Introduction
 
