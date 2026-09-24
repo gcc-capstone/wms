@@ -17,7 +17,7 @@ The tasks ensure that the design is based on actual user workflows rather than i
 **MVP** Evilin has just heard of the WMS Mobile app after being accustomed to the desktop version of the application, and downloads it in order to view the inspection task she will be working on. She logs in with her approved WMS account credentials and is able to view all of her current, upcoming, and completed tasks in the app.
 
 
-### 2. Online user modifies task
+#### 2. Online user modifies task
 **MVP** Sarah is connected to the internet and has just finished one of her tasks. She opens her task and adds information about the electric panel she was working on, adding pictures from her device and modifying both the task and safety checklist based on her observations on the job. After reviewing, she submits the task and logs out of the app after receiving confirmation from WMS.
 
 
