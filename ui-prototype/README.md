@@ -4,7 +4,7 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Get started
 
-1. Install dependencies
+1. FROM THE UI-PROTOTYPE DIRECTORY Install dependencies
 
    ```bash
    npm install
@@ -14,6 +14,12 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
    ```bash
    npx expo start
+   ```
+
+Or:
+
+   ```bash
+   npx expo start --web
    ```
 
 In the output, you'll find options to open the app in a
