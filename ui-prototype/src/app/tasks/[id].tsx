@@ -1,5 +1,4 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { SymbolView, SymbolViewProps } from "expo-symbols";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
@@ -20,14 +19,12 @@ import {
   Task,
 } from "../../constants/tasks";
 import { TaskDropdown } from "../../components/task-dropdown";
-import { TaskStatusBadge } from "../../components/task-status-badge";
 import { EvidencePhotoCard } from "../../components/evidence-photo";
 import { TaskSyncPanel } from "../../components/task-sync-panel";
 import { missingTaskRequirements } from "../../constants/prototype-workflows";
+import { isTaskBlocked } from "../../constants/task-list";
 import { useTasks } from "../../hooks/use-tasks";
 import { sharedStyles, theme } from "../../theme/orbital-theme";
-
-type TabKey = "info" | "checklist" | "attachments";
 
 // Horizontal swipe distance (in px) required to dismiss back to the task list.
 const SWIPE_DISMISS_THRESHOLD = 70;
@@ -41,7 +38,6 @@ export default function TaskDetailScreen() {
 
 function TaskDetail({ task }: { task: Task | undefined }) {
   const { submitTask, updateChecklist, createSafety } = useTasks();
-  const [activeTab, setActiveTab] = useState<TabKey>("checklist");
   const [submitError, setSubmitError] = useState("");
 
   const panResponder = useMemo(
@@ -75,7 +71,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   }
 
   const setResponse = (itemId: string, response: ChecklistResponse) => {
-    if (task.status === "Completed") return;
+    if (task.status === "Completed" || isTaskBlocked(task)) return;
     updateChecklist(task.id,
       task.checklist.map((item) =>
         item.id === itemId
@@ -94,12 +90,14 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   const checklist = task.checklist;
   const answeredCount = checklist.filter(isChecklistItemAnswered).length;
   const completed = task.status === "Completed";
+  const blocked = isTaskBlocked(task);
+  const readOnly = completed || blocked;
   const missing = missingTaskRequirements(task);
-  const canSubmit = !completed && missing.length === 0;
+  const canSubmit = !readOnly && missing.length === 0;
   const submitDisabled = !canSubmit && task.scenario !== "validation";
 
   const setCustomText = (itemId: string, text: string) => {
-    if (completed) return;
+    if (readOnly) return;
     updateChecklist(task.id,
       task.checklist.map((item) =>
         item.id === itemId ? { ...item, customText: text } : item
@@ -116,8 +114,6 @@ function TaskDetail({ task }: { task: Task | undefined }) {
         >
           <Text style={styles.backButtonText}>‹ Tasks</Text>
         </Pressable>
-
-        <TaskStatusBadge status={task.status} />
       </View>
 
       <View style={styles.body} {...panResponder.panHandlers}>
@@ -128,13 +124,19 @@ function TaskDetail({ task }: { task: Task | undefined }) {
             </Text>
             <Text style={sharedStyles.heading1}>{task.title}</Text>
             <Text style={styles.dueDate}>Due {task.dueDate}</Text>
-            {task.technician && <Text style={styles.dueDate}>Technician: {task.technician}</Text>}
-            {task.location && <Text style={styles.dueDate}>Location: {task.location}</Text>}
-            <CollapsibleDescription
-              description={task.description}
-              instructions={task.instructions}
-            />
           </View>
+
+          <TaskInformation task={task} />
+
+          {blocked && (
+            <View style={styles.submissionNotice}>
+              <Text style={sharedStyles.heading2}>Waiting for prerequisite</Text>
+              <Text style={sharedStyles.body}>
+                A previous task must be completed before you can work on this task.
+                You can review its information, checklist, and attachments below.
+              </Text>
+            </View>
+          )}
 
           <TaskSyncPanel task={task} />
 
@@ -153,7 +155,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
             </View>
           )}
 
-          {task.scenario === "safety" && (
+          {task.scenario === "safety" && !blocked && (
             <SectionCard title="Safety Checklist">
               <Text style={sharedStyles.body}>
                 {task.safety
@@ -175,28 +177,20 @@ function TaskDetail({ task }: { task: Task | undefined }) {
             </SectionCard>
           )}
 
-          {activeTab === "info" && <InfoTab task={task} />}
-          {activeTab === "checklist" && (
-            <ChecklistTab
-              checklist={checklist}
-              answeredCount={answeredCount}
-              onSetResponse={setResponse}
-              onChangeCustomText={setCustomText}
-              readOnly={completed}
-              showMissing={!!submitError}
-            />
+          <TaskChecklist
+            checklist={checklist}
+            answeredCount={answeredCount}
+            onSetResponse={setResponse}
+            onChangeCustomText={setCustomText}
+            readOnly={readOnly}
+            showMissing={!!submitError}
+          />
+          <TaskPhotos task={task} />
+          {task.attachments.length > 0 && (
+            <TaskAttachments attachments={task.attachments} readOnly={readOnly} />
           )}
-          {activeTab === "attachments" && (
-            <>
-              <TaskPhotos task={task} />
-              {task.attachments.length > 0 || !task.photos?.length
-                ? <AttachmentsTab attachments={task.attachments} />
-                : null}
-            </>
-          )}
-          {activeTab === "checklist" && <TaskPhotos task={task} />}
 
-          {activeTab === "checklist" && !completed && (
+          {!readOnly && (
             <View style={styles.submitArea}>
               <Text style={styles.submissionNote}>
                 {canSubmit
@@ -234,75 +228,30 @@ function TaskDetail({ task }: { task: Task | undefined }) {
           )}
         </ScrollView>
       </View>
-
-      <BottomTabBar activeTab={activeTab} onChange={setActiveTab} />
     </View>
   );
 }
 
-function CollapsibleDescription({
-  description,
-  instructions,
-}: {
-  description: string;
-  instructions: string;
-}) {
+function TaskInformation({ task }: { task: Task }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <View style={styles.descriptionWrapper}>
-      <Text style={styles.description}>{description}</Text>
-      {expanded && <Text style={styles.description}>{instructions}</Text>}
+    <View style={[sharedStyles.card, styles.sectionCard]}>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Task information"
         accessibilityState={{ expanded }}
+        style={styles.sectionHeader}
         onPress={() => setExpanded((prev) => !prev)}
       >
-        <Text style={styles.descriptionToggle}>
-          {expanded ? "View less ▴" : "View more ▾"}
-        </Text>
+        <Text style={sharedStyles.heading2}>Task Information</Text>
+        <Text style={styles.informationToggle}>{expanded ? "▴" : "▾"}</Text>
       </Pressable>
-    </View>
-  );
-}
-
-function InfoTab({ task }: { task: Task }) {
-  return (
-    <>
-      <View style={styles.actionRow}>
-        <Pressable
-          style={styles.secondaryAction}
-          onPress={() =>
-            Alert.alert(
-              "Request Task Review",
-              "This is a UI prototype — no request is sent."
-            )
-          }
-        >
-          <Text style={styles.secondaryActionText}>Request Review</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.secondaryAction}
-          onPress={() =>
-            Alert.alert(
-              "Comments",
-              "This is a UI prototype — comments are not available."
-            )
-          }
-        >
-          <Text style={styles.secondaryActionText}>Open Comments</Text>
-        </Pressable>
-      </View>
-
-      <SectionCard title="Task Information">
+      {expanded && (
         <View style={styles.infoGrid}>
           <InfoField label="Project No." value={task.projectNo} />
-          {task.technician && <InfoField label="Technician" value={task.technician} />}
-          {task.location && <InfoField label="Location" value={task.location} />}
           <InfoField label="Discipline Name" value={task.disciplineName} />
           <InfoField label="Workflow Type" value={task.workflowType} />
-          <InfoField label="Priority" value={task.priority} />
           <InfoField label="Due Date" value={task.dueDate} />
           <InfoField
             label="Time Estimate"
@@ -320,12 +269,12 @@ function InfoTab({ task }: { task: Task }) {
             tone={task.syncStatus === "Unsynced" ? "gold" : "neutral"}
           />
         </View>
-      </SectionCard>
-    </>
+      )}
+    </View>
   );
 }
 
-function ChecklistTab({
+function TaskChecklist({
   checklist,
   answeredCount,
   onSetResponse,
@@ -478,7 +427,7 @@ function TaskPhotos({ task }: { task: Task }) {
         <EvidencePhotoCard
           key={photo.id}
           photo={photo}
-          readOnly={task.status === "Completed"}
+          readOnly={task.status === "Completed" || isTaskBlocked(task)}
           onKeep={() => keepPhoto(task.id, photo.id)}
         />
       ))}
@@ -486,10 +435,16 @@ function TaskPhotos({ task }: { task: Task }) {
   );
 }
 
-function AttachmentsTab({ attachments }: { attachments: Attachment[] }) {
+function TaskAttachments({
+  attachments,
+  readOnly,
+}: {
+  attachments: Attachment[];
+  readOnly: boolean;
+}) {
   return (
     <SectionCard title="Attachments">
-      <Pressable
+      {!readOnly && <Pressable
         style={styles.uploadButton}
         onPress={() =>
           Alert.alert(
@@ -499,11 +454,11 @@ function AttachmentsTab({ attachments }: { attachments: Attachment[] }) {
         }
       >
         <Text style={styles.uploadButtonText}>+ Click to upload a file</Text>
-      </Pressable>
+      </Pressable>}
 
       <View style={styles.attachmentList}>
         {attachments.map((attachment) => (
-          <AttachmentRow key={attachment.id} attachment={attachment} />
+          <AttachmentRow key={attachment.id} attachment={attachment} readOnly={readOnly} />
         ))}
 
         {attachments.length === 0 && (
@@ -558,7 +513,13 @@ function InfoField({
   );
 }
 
-function AttachmentRow({ attachment }: { attachment: Attachment }) {
+function AttachmentRow({
+  attachment,
+  readOnly,
+}: {
+  attachment: Attachment;
+  readOnly: boolean;
+}) {
   return (
     <View style={styles.attachmentRow}>
       <View style={styles.attachmentIcon}>
@@ -578,7 +539,7 @@ function AttachmentRow({ attachment }: { attachment: Attachment }) {
         </Text>
       </View>
 
-      <Pressable
+      {!readOnly && <Pressable
         onPress={() =>
           Alert.alert(
             "Remove Attachment",
@@ -587,84 +548,8 @@ function AttachmentRow({ attachment }: { attachment: Attachment }) {
         }
       >
         <Text style={styles.attachmentRemove}>Remove</Text>
-      </Pressable>
+      </Pressable>}
     </View>
-  );
-}
-
-function BottomTabBar({
-  activeTab,
-  onChange,
-}: {
-  activeTab: TabKey;
-  onChange: (tab: TabKey) => void;
-}) {
-  return (
-    <View style={styles.tabBar}>
-      <TabBarButton
-        label="Info"
-        iconName={{ ios: "info.circle", android: "info", web: "info" }}
-        fallback="i"
-        active={activeTab === "info"}
-        onPress={() => onChange("info")}
-      />
-      <TabBarButton
-        label="Checklist"
-        iconName={{
-          ios: "checklist",
-          android: "checklist",
-          web: "checklist",
-        }}
-        fallback="✓"
-        active={activeTab === "checklist"}
-        onPress={() => onChange("checklist")}
-      />
-      <TabBarButton
-        label="Attach Files"
-        iconName={{
-          ios: "paperclip",
-          android: "attach_file",
-          web: "attach_file",
-        }}
-        fallback="📎"
-        active={activeTab === "attachments"}
-        onPress={() => onChange("attachments")}
-      />
-    </View>
-  );
-}
-
-function TabBarButton({
-  label,
-  iconName,
-  fallback,
-  active,
-  onPress,
-}: {
-  label: string;
-  iconName: SymbolViewProps["name"];
-  fallback: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const tintColor = active ? theme.colors.navy : theme.colors.textMuted;
-
-  return (
-    <Pressable style={styles.tabButton} onPress={onPress}>
-      <SymbolView
-        name={iconName}
-        size={22}
-        tintColor={tintColor}
-        fallback={
-          <Text style={{ color: tintColor, fontSize: 18 }}>{fallback}</Text>
-        }
-      />
-      <Text
-        style={[styles.tabButtonLabel, active && styles.tabButtonLabelActive]}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -730,42 +615,9 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
 
-  descriptionWrapper: {
-    marginTop: theme.spacing.sm,
-    gap: theme.spacing.sm,
-  },
-
-  description: {
-    ...theme.typography.body,
-    color: theme.colors.textMuted,
-  },
-
-  descriptionToggle: {
+  informationToggle: {
     color: theme.colors.navy,
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: theme.spacing.xs,
-  },
-
-  actionRow: {
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-  },
-
-  secondaryAction: {
-    flex: 1,
-    minHeight: 42,
-    borderRadius: theme.radius.md,
-    borderWidth: 1.5,
-    borderColor: theme.colors.navy,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: theme.spacing.md,
-  },
-
-  secondaryActionText: {
-    color: theme.colors.navy,
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: "700",
   },
 
@@ -777,6 +629,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    minHeight: 44,
   },
 
   checklistCount: {
@@ -990,29 +843,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  tabBar: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.mist,
-    backgroundColor: theme.colors.white,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.md,
-  },
-
-  tabButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-  },
-
-  tabButtonLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: theme.colors.textMuted,
-  },
-
-  tabButtonLabelActive: {
-    color: theme.colors.navy,
-  },
 });

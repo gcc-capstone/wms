@@ -36,9 +36,7 @@ export default function SafetyScreen() {
       <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
         <Text style={sharedStyles.heading1}>Safety Checklist</Text>
         <View style={[sharedStyles.card, styles.fields]}>
-          <Text style={sharedStyles.body}>Technician: {task.technician}</Text>
           <Text style={sharedStyles.body}>Date: {task.dueDate}</Text>
-          <Text style={sharedStyles.body}>Location: {task.location}</Text>
           <Text style={sharedStyles.body}>Related task: {task.title}</Text>
         </View>
         <Text accessibilityLiveRegion="polite" style={sharedStyles.body}>

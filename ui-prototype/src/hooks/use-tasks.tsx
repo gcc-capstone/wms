@@ -15,6 +15,7 @@ import {
   newSafetyChecklist,
   startSync,
 } from "../constants/prototype-workflows";
+import { isTaskBlocked } from "../constants/task-list";
 
 type SubmitResult = { success: true } | { success: false; error: string };
 type TaskStore = {
@@ -43,11 +44,15 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const updateChecklist = (id: number, checklist: ChecklistItem[]) => {
-    changeTask(id, (task) => task.status === "Completed" ? task : { ...task, checklist });
+    changeTask(id, (task) => {
+      if (isTaskBlocked(task)) throw new Error("A prerequisite task must be completed first.");
+      return task.status === "Completed" ? task : { ...task, checklist };
+    });
   };
 
   const keepPhoto = (id: number, photoId: PhotoKind, safety = false) => {
     changeTask(id, (task) => {
+      if (isTaskBlocked(task)) throw new Error("A prerequisite task must be completed first.");
       if (safety) {
         if (!task.safety) throw new Error("Create a Safety Checklist first.");
         if (task.safety.status === "Submitted") return task;

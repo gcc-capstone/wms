@@ -1,8 +1,10 @@
 import { isChecklistItemAnswered, SafetyChecklist, Task } from "./tasks";
 import { createPhoto } from "./representative-tasks";
+import { isTaskBlocked } from "./task-list";
 
 export function missingTaskRequirements(task: Task): string[] {
   return [
+    ...(isTaskBlocked(task) ? ["A prerequisite task must be completed first."] : []),
     ...task.checklist.filter((item) => !isChecklistItemAnswered(item)).map((item) => item.label),
     ...(task.photos ?? []).filter((photo) => !photo.attached).map((photo) => photo.label),
     ...(task.checklist.length === 0 ? ["No checklist items are available for this task."] : []),

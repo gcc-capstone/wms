@@ -13,72 +13,37 @@ import {
 } from "react-native";
 
 import { sharedStyles, theme } from "../../theme/orbital-theme";
-import { Priority, Task, TaskStatus } from "../../constants/tasks";
-import { TaskDropdown } from "../../components/task-dropdown";
-import { TaskStatusBadge } from "../../components/task-status-badge";
+import {
+  filterTasks,
+  taskCategories,
+  TaskCategory,
+} from "../../constants/task-list";
 import { useTasks } from "../../hooks/use-tasks";
-
-const statusOptions: ("All" | TaskStatus)[] = [
-  "All",
-  "In Progress",
-  "Not Started",
-  "Current",
-  "Upcoming",
-  "Completed",
-];
-
-const priorityOptions: ("All" | Priority)[] = [
-  "All",
-  "High",
-  "Normal",
-  "Medium",
-  "Low",
-];
 
 export default function TaskListScreen() {
   const { tasks } = useTasks();
   const { width } = useWindowDimensions();
-  const wideLayout = width >= 900;
   const [searchText, setSearchText] = useState("");
-  const [statusFilter, setStatusFilter] =
-    useState<(typeof statusOptions)[number]>("All");
-  const [priorityFilter, setPriorityFilter] =
-    useState<(typeof priorityOptions)[number]>("All");
-
-  const filteredTasks = useMemo(() => {
-    const search = searchText.trim().toLowerCase();
-
-    return tasks.filter((task) => {
-      const matchesSearch =
-        search.length === 0 ||
-        task.title.toLowerCase().includes(search) ||
-        task.description.toLowerCase().includes(search) ||
-        !!task.technician?.toLowerCase().includes(search) ||
-        !!task.location?.toLowerCase().includes(search);
-
-      const matchesStatus =
-        statusFilter === "All" || task.status === statusFilter;
-
-      const matchesPriority =
-        priorityFilter === "All" || task.priority === priorityFilter;
-
-      return matchesSearch && matchesStatus && matchesPriority;
-    });
-  }, [tasks, searchText, statusFilter, priorityFilter]);
+  const [category, setCategory] = useState<TaskCategory>("Available");
+  const [refreshMessage, setRefreshMessage] = useState("");
+  const filteredTasks = useMemo(
+    () => filterTasks(tasks, category, searchText),
+    [tasks, category, searchText],
+  );
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={sharedStyles.header}>
         <Image
           source={require("../../assets/orbital-logo.png")}
           style={styles.logo}
           resizeMode="contain"
         />
-
         <Pressable
-          style={styles.settingsButton}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          style={styles.iconButton}
           onPress={() => router.push("/settings")}
-          hitSlop={8}
         >
           <SymbolView
             name={{ ios: "gearshape", android: "settings", web: "settings" }}
@@ -89,93 +54,88 @@ export default function TaskListScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.page, wideLayout && styles.pageWide]}>
-        <View style={[styles.titleRow, !wideLayout && styles.titleRowNarrow]}>
-          <View style={styles.titleArea}>
-            <Text style={sharedStyles.heading1}>My Tasks</Text>
-            <Text style={styles.subtitle}>
-              Search and review your assigned field work.
-            </Text>
-          </View>
-
-          <Pressable style={styles.refreshButton} onPress={() => {}}>
-            <Text style={styles.refreshButtonText}>Refresh</Text>
+      <ScrollView contentContainerStyle={[styles.page, width >= 900 && styles.pageWide]}>
+        <View style={styles.titleRow}>
+          <Text style={sharedStyles.heading1}>My Tasks</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Refresh tasks"
+            style={styles.iconButton}
+            onPress={() =>
+              setRefreshMessage(
+                `Prototype list refreshed at ${new Date().toLocaleTimeString()}. No server connection is used.`,
+              )
+            }
+          >
+            <SymbolView
+              name={{ ios: "arrow.clockwise", android: "refresh", web: "refresh" }}
+              tintColor={theme.colors.navy}
+              size={24}
+              fallback={<Text style={styles.refreshFallback}>↻</Text>}
+            />
           </Pressable>
         </View>
-
-        <View style={[styles.filterPanel, wideLayout && styles.filterPanelWide]}>
-          <View style={[styles.searchArea, wideLayout && styles.searchAreaWide]}>
-            <Text style={sharedStyles.label}>Search Tasks</Text>
-            <TextInput
-              value={searchText}
-              onChangeText={setSearchText}
-              placeholder="Search tasks, technicians, or sites"
-              placeholderTextColor={theme.colors.textMuted}
-              style={sharedStyles.input}
-            />
-          </View>
-
-          <View style={[styles.filterArea, wideLayout && styles.filterAreaWide]}>
-            <Text style={sharedStyles.label}>Status</Text>
-            <View style={styles.statusRow}>
-              {statusOptions.map((option) => {
-                const selected = option === statusFilter;
-
-                return (
-                  <Pressable
-                    key={option}
-                    style={[
-                      styles.filterChip,
-                      selected && styles.filterChipSelected,
-                    ]}
-                    onPress={() => setStatusFilter(option)}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        selected && styles.filterChipTextSelected,
-                      ]}
-                    >
-                      {option}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={[styles.priorityArea, wideLayout && styles.priorityAreaWide]}>
-            <Text style={sharedStyles.label}>Priority</Text>
-            <TaskDropdown
-              label="Priority"
-              value={priorityFilter}
-              options={priorityOptions}
-              onChange={setPriorityFilter}
-            />
-          </View>
-        </View>
-
-        <View style={styles.listHeader}>
-          <Text style={sharedStyles.heading2}>Tasks</Text>
-          <Text style={styles.resultCount}>
-            {filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
+        {!!refreshMessage && (
+          <Text accessibilityLiveRegion="polite" style={styles.helperText}>
+            {refreshMessage}
           </Text>
+        )}
+
+        <TextInput
+          accessibilityLabel="Search tasks"
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="Search tasks"
+          placeholderTextColor={theme.colors.textMuted}
+          style={sharedStyles.input}
+        />
+
+        <View accessibilityRole="tablist" style={styles.categoryRow}>
+          {taskCategories.map((option) => (
+            <Pressable
+              key={option}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: option === category }}
+              style={[styles.categoryTab, option === category && styles.categoryTabSelected]}
+              onPress={() => setCategory(option)}
+            >
+              <Text style={[styles.categoryText, option === category && styles.categoryTextSelected]}>
+                {option}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
+        {category === "Current" && (
+          <Text style={styles.helperText}>
+            These tasks are waiting for a prerequisite task to be completed.
+          </Text>
+        )}
+        <Text style={styles.resultCount}>
+          {filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
+        </Text>
         <View style={styles.taskList}>
           {filteredTasks.map((task) => (
-            <TaskCard
+            <Pressable
               key={task.id}
-              task={task}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${task.title}`}
+              style={styles.taskCard}
               onPress={() => router.push(`/tasks/${task.id}`)}
-            />
+            >
+              <View style={styles.taskCardAccent} />
+              <View style={styles.taskMain}>
+                <Text style={styles.taskTitle}>{task.title}</Text>
+                <Text style={styles.dueDate}>Due {task.dueDate}</Text>
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
           ))}
-
           {filteredTasks.length === 0 && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateTitle}>No tasks found</Text>
-              <Text style={styles.emptyStateText}>
-                Try changing the search text or filters.
+              <Text style={sharedStyles.heading2}>No tasks found</Text>
+              <Text style={styles.helperText}>
+                Try another search or task tab.
               </Text>
             </View>
           )}
@@ -185,370 +145,66 @@ export default function TaskListScreen() {
   );
 }
 
-function TaskCard({
-  task,
-  onPress,
-}: {
-  task: Task;
-  onPress: () => void;
-}) {
-  const { width } = useWindowDimensions();
-  return (
-    <Pressable style={styles.taskCard} onPress={onPress}>
-      <View style={styles.taskCardAccent} />
-
-      <View style={styles.taskMain}>
-        <View style={[styles.taskTopRow, width < 600 && styles.taskTopRowNarrow]}>
-          <View style={styles.taskTitleArea}>
-            <Text style={styles.taskTitle}>{task.title}</Text>
-            <Text style={styles.dueDate}>Due {task.dueDate}</Text>
-            {task.technician && <Text style={styles.dueDate}>{task.technician} · {task.location}</Text>}
-          </View>
-
-          <TaskStatusBadge status={task.status} />
-        </View>
-
-        <Text style={styles.description}>{task.description}</Text>
-
-        <View style={styles.metaRow}>
-          <InfoBadge
-            label={`Priority: ${task.priority}`}
-            tone={task.priority === "High" ? "gold" : "neutral"}
-          />
-
-          <InfoBadge
-            label={task.availableOffline ? "Available offline" : "Online only"}
-            tone="neutral"
-          />
-
-          <InfoBadge
-            label={
-              task.syncStatus === "Unsynced"
-                ? "Saved on device · Waiting to sync"
-                : task.syncStatus === "Up to date" && task.status === "Completed" && task.scenario
-                  ? "Synchronized with WMS"
-                  : task.syncStatus
-            }
-            tone={task.syncStatus === "Unsynced" ? "gold" : "neutral"}
-          />
-          {task.scenario === "offline" && task.status !== "Completed" && (
-            <InfoBadge label="Checklist and photos ready for offline use" tone="neutral" />
-          )}
-          {task.safety && <InfoBadge label={`Safety Checklist: ${task.safety.status}`} tone="neutral" />}
-        </View>
-      </View>
-
-      <Text style={styles.chevron}>›</Text>
-    </Pressable>
-  );
-}
-
-function InfoBadge({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "gold" | "neutral";
-}) {
-  return (
-    <View
-      style={[
-        styles.infoBadge,
-        tone === "gold" && styles.infoBadgeGold,
-      ]}
-    >
-      <Text
-        style={[
-          styles.infoBadgeText,
-          tone === "gold" && styles.infoBadgeGoldText,
-        ]}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-
-  header: {
-    minHeight: 76,
-    paddingHorizontal: theme.spacing.xl,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: theme.colors.navy,
-  },
-
-  logo: {
-    width: 54 * (304 / 110),
-    height: 54,
-  },
-
-  settingsButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  logo: { width: 38 * (304 / 110), height: 38 },
+  iconButton: {
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  settingsFallback: {
-    color: theme.colors.white,
-    fontSize: 20,
-  },
-
+  settingsFallback: { color: theme.colors.white, fontSize: 20 },
+  refreshFallback: { color: theme.colors.navy, fontSize: 28 },
   page: {
     width: "100%",
     maxWidth: 1180,
     alignSelf: "center",
     padding: theme.spacing.xl,
     paddingBottom: 40,
+    gap: theme.spacing.md,
   },
-  pageWide: {
-    padding: 32,
-    paddingBottom: 48,
-  },
-  titleArea: {
-    flex: 1,
-    minWidth: 0,
-  },
-  titleRowNarrow: {
-    flexDirection: "column",
-    gap: theme.spacing.lg,
-  },
-
+  pageWide: { padding: 32, paddingBottom: 48 },
   titleRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
-    gap: theme.spacing.xl,
-    flexWrap: "wrap",
-    marginBottom: theme.spacing.xxl,
+    gap: theme.spacing.sm,
   },
-
-  subtitle: {
-    ...theme.typography.body,
-    color: theme.colors.textMuted,
-    marginTop: theme.spacing.xs,
-  },
-
-  refreshButton: {
+  categoryRow: { flexDirection: "row" },
+  categoryTab: {
+    flex: 1,
     minHeight: 44,
-    minWidth: 110,
-    borderRadius: theme.radius.md,
-    borderWidth: 1.5,
-    borderColor: theme.colors.gold,
-    backgroundColor: theme.colors.white,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: theme.spacing.lg,
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.border,
   },
-
-  refreshButtonText: {
-    ...theme.typography.button,
-    color: theme.colors.navy,
-  },
-
-  filterPanel: {
-    ...sharedStyles.card,
-    flexDirection: "column",
-    alignItems: "stretch",
-    gap: theme.spacing.xl,
-    marginBottom: theme.spacing.xxl,
-    padding: theme.spacing.xl,
-  },
-  filterPanelWide: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  searchAreaWide: { flex: 1.2 },
-  filterAreaWide: { flex: 1.4 },
-  priorityAreaWide: { flex: 0.7 },
-
-  searchArea: {
-    gap: theme.spacing.xs,
-  },
-
-  filterArea: {
-    gap: theme.spacing.xs,
-  },
-
-  priorityArea: {
-    gap: theme.spacing.xs,
-  },
-
-  statusRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing.xs,
-  },
-
-  filterChip: {
-    minHeight: 46,
-    flexGrow: 1,
-    paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  filterChipSelected: {
-    borderColor: theme.colors.navy,
-    backgroundColor: theme.colors.navy,
-  },
-
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.navy,
-  },
-
-  filterChipTextSelected: {
-    color: theme.colors.white,
-  },
-
-  listHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: theme.spacing.md,
-  },
-
-  resultCount: {
-    fontSize: 14,
-    color: theme.colors.textMuted,
-  },
-
-  taskList: {
-    gap: theme.spacing.xl,
-  },
-
+  categoryTabSelected: { borderBottomColor: theme.colors.navy },
+  categoryText: { fontSize: 14, fontWeight: "600", color: theme.colors.textMuted },
+  categoryTextSelected: { color: theme.colors.navy },
+  helperText: { fontSize: 13, lineHeight: 18, color: theme.colors.textMuted },
+  resultCount: { fontSize: 13, color: theme.colors.textMuted },
+  taskList: { gap: theme.spacing.sm },
   taskCard: {
     backgroundColor: theme.colors.white,
     borderWidth: 1,
     borderColor: theme.colors.mist,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.xl,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
     flexDirection: "row",
-    alignItems: "stretch",
-
-    shadowColor: "#000000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    alignItems: "center",
   },
-
   taskCardAccent: {
-    width: 5,
+    width: 4,
+    alignSelf: "stretch",
     borderRadius: 3,
     backgroundColor: theme.colors.gold,
-    marginRight: theme.spacing.lg,
+    marginRight: theme.spacing.md,
   },
-
-  taskMain: {
-    flex: 1,
-  },
-
-  taskTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: theme.spacing.lg,
-    flexWrap: "wrap",
-  },
-  taskTopRowNarrow: {
-    flexDirection: "column",
-    gap: theme.spacing.sm,
-  },
-
-  taskTitleArea: {
-    flex: 1,
-  },
-
-  taskTitle: {
-    color: theme.colors.navy,
-    fontSize: 19,
-    lineHeight: 24,
-    fontWeight: "700",
-  },
-
-  dueDate: {
-    color: theme.colors.textMuted,
-    fontSize: 13,
-    marginTop: 2,
-  },
-
-  description: {
-    ...theme.typography.body,
-    color: theme.colors.text,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-  },
-
-  metaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing.sm,
-  },
-
-  infoBadge: {
-    minHeight: 28,
-    borderRadius: 14,
-    paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.warmWhite,
-    borderWidth: 1,
-    borderColor: theme.colors.mist,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  infoBadgeGold: {
-    borderColor: theme.colors.gold,
-    backgroundColor: "#F3EBDD",
-  },
-
-  infoBadgeText: {
-    color: theme.colors.textMuted,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  infoBadgeGoldText: {
-    color: theme.colors.navy,
-  },
-
-  chevron: {
-    color: theme.colors.navy,
-    fontSize: 30,
-    lineHeight: 34,
-    alignSelf: "center",
-    marginLeft: theme.spacing.md,
-  },
-
-  emptyState: {
-    ...sharedStyles.card,
-    alignItems: "center",
-    paddingVertical: 36,
-  },
-
-  emptyStateTitle: {
-    color: theme.colors.navy,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
-  emptyStateText: {
-    ...theme.typography.body,
-    color: theme.colors.textMuted,
-    marginTop: theme.spacing.xs,
-  },
+  taskMain: { flex: 1, minWidth: 0 },
+  taskTitle: { color: theme.colors.navy, fontSize: 16, lineHeight: 21, fontWeight: "700" },
+  dueDate: { color: theme.colors.textMuted, fontSize: 12, marginTop: 2 },
+  chevron: { color: theme.colors.navy, fontSize: 26, marginLeft: theme.spacing.sm },
+  emptyState: { ...sharedStyles.card, alignItems: "center", gap: theme.spacing.sm },
 });

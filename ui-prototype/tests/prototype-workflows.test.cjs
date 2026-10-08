@@ -15,6 +15,12 @@ require.extensions[".ts"] = (module, filename) => {
 const { representativeTasks } = require("../src/constants/representative-tasks.ts");
 const { isChecklistItemAnswered, tasks } = require("../src/constants/tasks.ts");
 const {
+  filterTasks,
+  isTaskBlocked,
+  taskCategories,
+  taskCategory,
+} = require("../src/constants/task-list.ts");
+const {
   missingTaskRequirements,
   completeTask,
   newSafetyChecklist,
@@ -175,4 +181,56 @@ test("legacy October sample tasks remain usable", () => {
   const dropdown = task.checklist.find((item) => item.kind === "dropdown");
   assert.equal(isChecklistItemAnswered({ ...dropdown, response: "A" }), false);
   assert.ok(tasks.some((entry) => entry.id === 5 && entry.status === "Completed"));
+});
+
+test("list categories separate blocked, actionable, and completed tasks", () => {
+  assert.deepEqual(taskCategories, ["Current", "Available", "Completed"]);
+  const expected = {
+    Current: "Available",
+    "In Progress": "Available",
+    "Not Started": "Available",
+    Upcoming: "Current",
+    Completed: "Completed",
+  };
+  for (const [status, category] of Object.entries(expected)) {
+    assert.equal(taskCategory({ ...tasks[0], status }), category);
+  }
+  const groups = taskCategories.flatMap((category) => filterTasks(tasks, category, ""));
+  assert.equal(groups.length, tasks.length);
+  assert.equal(new Set(groups.map((task) => task.id)).size, tasks.length);
+  assert.ok(filterTasks(tasks, "Current", "").every(isTaskBlocked));
+  assert.ok(representativeTasks.every((task) => taskCategory(task) === "Available"));
+});
+
+test("search matches task titles within the selected category only", () => {
+  assert.deepEqual(
+    filterTasks(tasks, "Available", "  PRESSURE SENSOR  ").map((task) => task.scenario),
+    ["offline"],
+  );
+  assert.deepEqual(filterTasks(tasks, "Current", "pressure sensor"), []);
+  assert.deepEqual(filterTasks(tasks, "Available", "Sarah Miller"), []);
+  assert.deepEqual(filterTasks(tasks, "Available", "North Ridge Substation"), []);
+  assert.deepEqual(filterTasks(tasks, "Available", "no such task"), []);
+});
+
+test("Current tasks cannot be submitted even with a fully answered checklist", () => {
+  const task = structuredClone(tasks.find(isTaskBlocked));
+  task.checklist = task.checklist.map((item) => ({
+    ...item,
+    response: item.kind === "dropdown" ? item.options[0] : "Yes",
+    customText: "Inspection notes",
+  }));
+  assert.deepEqual(missingTaskRequirements(task), ["A prerequisite task must be completed first."]);
+  assert.throws(() => completeTask(task), /prerequisite task must be completed/);
+  assert.equal(taskCategory(task), "Current");
+});
+
+test("submitted Available tasks move to Completed without losing answers", () => {
+  const task = attachAll(answer(scenario("offline"), {
+    inspected: "Yes", pressure: "62 PSI", condition: "Good",
+  }));
+  const completed = completeTask(task);
+  assert.equal(filterTasks([completed], "Available", "").length, 0);
+  assert.deepEqual(filterTasks([completed], "Completed", ""), [completed]);
+  assert.deepEqual(completed.checklist, task.checklist);
 });
