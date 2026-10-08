@@ -16,8 +16,15 @@ import {
   Attachment,
   ChecklistItem,
   ChecklistResponse,
-  getTaskById,
+  isChecklistItemAnswered,
+  Task,
 } from "../../constants/tasks";
+import { TaskDropdown } from "../../components/task-dropdown";
+import { TaskStatusBadge } from "../../components/task-status-badge";
+import { EvidencePhotoCard } from "../../components/evidence-photo";
+import { TaskSyncPanel } from "../../components/task-sync-panel";
+import { missingTaskRequirements } from "../../constants/prototype-workflows";
+import { useTasks } from "../../hooks/use-tasks";
 import { sharedStyles, theme } from "../../theme/orbital-theme";
 
 type TabKey = "info" | "checklist" | "attachments";
@@ -27,12 +34,15 @@ const SWIPE_DISMISS_THRESHOLD = 70;
 
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const task = useMemo(() => getTaskById(Number(id)), [id]);
+  const { tasks } = useTasks();
+  const task = tasks.find((entry) => entry.id === Number(id));
+  return <TaskDetail key={id} task={task} />;
+}
 
+function TaskDetail({ task }: { task: Task | undefined }) {
+  const { submitTask, updateChecklist, createSafety } = useTasks();
   const [activeTab, setActiveTab] = useState<TabKey>("checklist");
-  const [checklist, setChecklist] = useState<ChecklistItem[]>(
-    task?.checklist ?? []
-  );
+  const [submitError, setSubmitError] = useState("");
 
   const panResponder = useMemo(
     () =>
@@ -65,22 +75,33 @@ export default function TaskDetailScreen() {
   }
 
   const setResponse = (itemId: string, response: ChecklistResponse) => {
-    setChecklist((prev) =>
-      prev.map((item) =>
+    if (task.status === "Completed") return;
+    updateChecklist(task.id,
+      task.checklist.map((item) =>
         item.id === itemId
-          ? { ...item, response: item.response === response ? null : response }
+          ? {
+              ...item,
+              response:
+                item.kind === "yesNo" && item.response === response
+                  ? null
+                  : response,
+            }
           : item
       )
     );
   };
 
-  const answeredCount = checklist.filter(
-    (item) => item.response !== null || item.customText.trim().length > 0
-  ).length;
+  const checklist = task.checklist;
+  const answeredCount = checklist.filter(isChecklistItemAnswered).length;
+  const completed = task.status === "Completed";
+  const missing = missingTaskRequirements(task);
+  const canSubmit = !completed && missing.length === 0;
+  const submitDisabled = !canSubmit && task.scenario !== "validation";
 
   const setCustomText = (itemId: string, text: string) => {
-    setChecklist((prev) =>
-      prev.map((item) =>
+    if (completed) return;
+    updateChecklist(task.id,
+      task.checklist.map((item) =>
         item.id === itemId ? { ...item, customText: text } : item
       )
     );
@@ -96,7 +117,7 @@ export default function TaskDetailScreen() {
           <Text style={styles.backButtonText}>‹ Tasks</Text>
         </Pressable>
 
-        <StatusPill status={task.status} />
+        <TaskStatusBadge status={task.status} />
       </View>
 
       <View style={styles.body} {...panResponder.panHandlers}>
@@ -107,8 +128,52 @@ export default function TaskDetailScreen() {
             </Text>
             <Text style={sharedStyles.heading1}>{task.title}</Text>
             <Text style={styles.dueDate}>Due {task.dueDate}</Text>
-            <CollapsibleDescription description={task.description} />
+            {task.technician && <Text style={styles.dueDate}>Technician: {task.technician}</Text>}
+            {task.location && <Text style={styles.dueDate}>Location: {task.location}</Text>}
+            <CollapsibleDescription
+              description={task.description}
+              instructions={task.instructions}
+            />
           </View>
+
+          <TaskSyncPanel task={task} />
+
+          {completed && (
+            <View style={styles.submissionNotice} accessibilityLiveRegion="polite">
+              <Text style={sharedStyles.heading2}>
+                {task.syncStatus === "Up to date" ? "Task submitted" : "Task completed on device"}
+              </Text>
+              <Text style={sharedStyles.body}>
+                Completed by {task.completedBy} on {task.completedDate}. Your
+                answers are available below.
+              </Text>
+              <Text style={styles.submissionNote}>
+                Prototype only: records are kept while the app is open, not sent to a server.
+              </Text>
+            </View>
+          )}
+
+          {task.scenario === "safety" && (
+            <SectionCard title="Safety Checklist">
+              <Text style={sharedStyles.body}>
+                {task.safety
+                  ? `${task.safety.status}${task.safety.saved && task.safety.status === "Draft" ? " saved" : ""} · Related task: ${task.title}`
+                  : "Create a Safety Checklist associated with this job."}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                style={sharedStyles.secondaryButton}
+                onPress={() => {
+                  createSafety(task.id);
+                  router.push(`/tasks/safety/${task.id}`);
+                }}
+              >
+                <Text style={sharedStyles.secondaryButtonText}>
+                  {task.safety ? task.safety.status === "Draft" ? "Open draft Safety Checklist" : "View submitted Safety Checklist" : "Create Safety Checklist"}
+                </Text>
+              </Pressable>
+            </SectionCard>
+          )}
 
           {activeTab === "info" && <InfoTab task={task} />}
           {activeTab === "checklist" && (
@@ -117,26 +182,55 @@ export default function TaskDetailScreen() {
               answeredCount={answeredCount}
               onSetResponse={setResponse}
               onChangeCustomText={setCustomText}
+              readOnly={completed}
+              showMissing={!!submitError}
             />
           )}
           {activeTab === "attachments" && (
-            <AttachmentsTab attachments={task.attachments} />
+            <>
+              <TaskPhotos task={task} />
+              {task.attachments.length > 0 || !task.photos?.length
+                ? <AttachmentsTab attachments={task.attachments} />
+                : null}
+            </>
           )}
+          {activeTab === "checklist" && <TaskPhotos task={task} />}
 
-          {activeTab === "checklist" && (
-            <Pressable
-              style={[sharedStyles.primaryButton, styles.saveButton]}
-              onPress={() =>
-                Alert.alert(
-                  "Saved",
-                  "This is a UI prototype — nothing was actually saved."
-                )
-              }
-            >
-              <Text style={sharedStyles.primaryButtonText}>
-                Save and Complete
+          {activeTab === "checklist" && !completed && (
+            <View style={styles.submitArea}>
+              <Text style={styles.submissionNote}>
+                {canSubmit
+                  ? "All items complete. Ready to submit."
+                  : `Complete all checklist items and required photographs to submit (${answeredCount}/${checklist.length} checklist items).`}
               </Text>
-            </Pressable>
+              {!!submitError && (
+                <Text accessibilityRole="alert" style={styles.submitError}>
+                  {submitError}
+                </Text>
+              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: submitDisabled }}
+                disabled={submitDisabled}
+                style={[
+                  sharedStyles.primaryButton,
+                  submitDisabled && styles.submitDisabled,
+                ]}
+                onPress={() => {
+                  const result = submitTask(task.id);
+                  setSubmitError(result.success ? "" : result.error);
+                }}
+              >
+                <Text
+                  style={[
+                    sharedStyles.primaryButtonText,
+                    submitDisabled && styles.submitDisabledText,
+                  ]}
+                >
+                  Submit
+                </Text>
+              </Pressable>
+            </View>
           )}
         </ScrollView>
       </View>
@@ -146,32 +240,33 @@ export default function TaskDetailScreen() {
   );
 }
 
-function CollapsibleDescription({ description }: { description: string }) {
+function CollapsibleDescription({
+  description,
+  instructions,
+}: {
+  description: string;
+  instructions: string;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <Pressable
-      style={styles.descriptionWrapper}
-      onPress={() => setExpanded((prev) => !prev)}
-    >
-      <Text
-        style={styles.description}
-        numberOfLines={expanded ? undefined : 2}
+    <View style={styles.descriptionWrapper}>
+      <Text style={styles.description}>{description}</Text>
+      {expanded && <Text style={styles.description}>{instructions}</Text>}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((prev) => !prev)}
       >
-        {description}
-      </Text>
-      <Text style={styles.descriptionToggle}>
-        {expanded ? "Show less ▴" : "Show more ▾"}
-      </Text>
-    </Pressable>
+        <Text style={styles.descriptionToggle}>
+          {expanded ? "View less ▴" : "View more ▾"}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
-function InfoTab({
-  task,
-}: {
-  task: NonNullable<ReturnType<typeof getTaskById>>;
-}) {
+function InfoTab({ task }: { task: Task }) {
   return (
     <>
       <View style={styles.actionRow}>
@@ -203,6 +298,8 @@ function InfoTab({
       <SectionCard title="Task Information">
         <View style={styles.infoGrid}>
           <InfoField label="Project No." value={task.projectNo} />
+          {task.technician && <InfoField label="Technician" value={task.technician} />}
+          {task.location && <InfoField label="Location" value={task.location} />}
           <InfoField label="Discipline Name" value={task.disciplineName} />
           <InfoField label="Workflow Type" value={task.workflowType} />
           <InfoField label="Priority" value={task.priority} />
@@ -233,11 +330,15 @@ function ChecklistTab({
   answeredCount,
   onSetResponse,
   onChangeCustomText,
+  readOnly,
+  showMissing,
 }: {
   checklist: ChecklistItem[];
   answeredCount: number;
   onSetResponse: (itemId: string, response: ChecklistResponse) => void;
   onChangeCustomText: (itemId: string, text: string) => void;
+  readOnly: boolean;
+  showMissing: boolean;
 }) {
   return (
     <SectionCard
@@ -256,6 +357,8 @@ function ChecklistTab({
             isLast={index === checklist.length - 1}
             onSetResponse={onSetResponse}
             onChangeCustomText={onChangeCustomText}
+            readOnly={readOnly}
+            showMissing={showMissing}
           />
         ))}
 
@@ -269,40 +372,35 @@ function ChecklistTab({
   );
 }
 
-const dropdownOptions: ("A" | "B" | "C")[] = ["A", "B", "C"];
-
 function ChecklistRow({
   item,
   isLast,
   onSetResponse,
   onChangeCustomText,
+  readOnly,
+  showMissing,
 }: {
   item: ChecklistItem;
   isLast: boolean;
   onSetResponse: (itemId: string, response: ChecklistResponse) => void;
   onChangeCustomText: (itemId: string, text: string) => void;
+  readOnly: boolean;
+  showMissing: boolean;
 }) {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const isOptionSelected =
-    item.response === "A" || item.response === "B" || item.response === "C";
-
   return (
-    <View
-      style={[
-        styles.checklistRow,
-        isLast && styles.checklistRowLast,
-        dropdownOpen && styles.checklistRowMenuOpen,
-      ]}
-    >
+    <View style={[styles.checklistRow, isLast && styles.checklistRowLast]}>
       <View style={styles.checklistAnswerRow}>
         <View style={styles.checklistLabelArea}>
           <Text style={styles.checklistLabel}>{item.label}</Text>
         </View>
 
-        {item.kind !== "text" && <View style={styles.controlRow}>
-          {item.kind === "yesNo" && (
-            <>
-              <Pressable
+        {item.kind === "yesNo" && (
+          <View style={styles.controlRow}>
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${item.label}: Yes`}
+                accessibilityState={{ selected: item.response === "Yes", disabled: readOnly }}
+                disabled={readOnly}
                 style={[
                   styles.toggleButton,
                   item.response === "Yes" && styles.toggleButtonActive,
@@ -317,9 +415,13 @@ function ChecklistRow({
                 >
                   Yes
                 </Text>
-              </Pressable>
+            </Pressable>
 
-              <Pressable
+            {item.allowNA !== false && <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${item.label}: N/A`}
+                accessibilityState={{ selected: item.response === "N/A", disabled: readOnly }}
+                disabled={readOnly}
                 style={[
                   styles.toggleButton,
                   item.response === "N/A" && styles.toggleButtonActive,
@@ -334,55 +436,24 @@ function ChecklistRow({
                 >
                   N/A
                 </Text>
-              </Pressable>
-            </>
-          )}
-
-          {item.kind === "dropdown" && (
-            <View style={styles.dropdownWrapper}>
-              <Pressable
-                style={[
-                  styles.toggleButton,
-                  styles.dropdownToggle,
-                  isOptionSelected && styles.toggleButtonActive,
-                ]}
-                onPress={() => setDropdownOpen((prev) => !prev)}
-              >
-                <Text
-                  style={[
-                    styles.toggleButtonText,
-                    isOptionSelected && styles.toggleButtonTextActive,
-                  ]}
-                >
-                  {isOptionSelected ? `Option ${item.response}` : "Option"} ▾
-                </Text>
-              </Pressable>
-
-              {dropdownOpen && (
-                <View style={styles.dropdownMenu}>
-                  {dropdownOptions.map((option) => (
-                    <Pressable
-                      key={option}
-                      style={styles.dropdownMenuItem}
-                      onPress={() => {
-                        onSetResponse(item.id, option);
-                        setDropdownOpen(false);
-                      }}
-                    >
-                      <Text style={styles.dropdownMenuItemText}>
-                        Option {option}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-        </View>}
+            </Pressable>}
+          </View>
+        )}
       </View>
 
+      {item.kind === "dropdown" && (
+        <TaskDropdown
+          label={item.label}
+          value={item.response}
+          options={item.options}
+          onChange={(value) => onSetResponse(item.id, value)}
+          disabled={readOnly}
+        />
+      )}
       {item.kind === "text" && (
         <TextInput
+          accessibilityLabel={item.label}
+          editable={!readOnly}
           value={item.customText}
           onChangeText={(text) => onChangeCustomText(item.id, text)}
           placeholder="Add a custom answer…"
@@ -391,7 +462,27 @@ function ChecklistRow({
           multiline
         />
       )}
+      {showMissing && !isChecklistItemAnswered(item) && (
+        <Text style={styles.submitError}>Required: {item.label}</Text>
+      )}
     </View>
+  );
+}
+
+function TaskPhotos({ task }: { task: Task }) {
+  const { keepPhoto } = useTasks();
+  if (!task.photos?.length) return null;
+  return (
+    <SectionCard title="Required photographs">
+      {task.photos.map((photo) => (
+        <EvidencePhotoCard
+          key={photo.id}
+          photo={photo}
+          readOnly={task.status === "Completed"}
+          onKeep={() => keepPhoto(task.id, photo.id)}
+        />
+      ))}
+    </SectionCard>
   );
 }
 
@@ -497,28 +588,6 @@ function AttachmentRow({ attachment }: { attachment: Attachment }) {
       >
         <Text style={styles.attachmentRemove}>Remove</Text>
       </Pressable>
-    </View>
-  );
-}
-
-function StatusPill({ status }: { status: string }) {
-  return (
-    <View
-      style={[
-        styles.statusPill,
-        status === "Current" && styles.statusPillCurrent,
-        status === "Upcoming" && styles.statusPillUpcoming,
-        status === "Completed" && styles.statusPillCompleted,
-      ]}
-    >
-      <Text
-        style={[
-          styles.statusPillText,
-          status === "Completed" && styles.statusPillCompletedText,
-        ]}
-      >
-        {status}
-      </Text>
     </View>
   );
 }
@@ -636,6 +705,9 @@ const styles = StyleSheet.create({
   },
 
   page: {
+    width: "100%",
+    maxWidth: 960,
+    alignSelf: "center",
     padding: theme.spacing.xl,
     gap: theme.spacing.lg,
   },
@@ -660,6 +732,7 @@ const styles = StyleSheet.create({
 
   descriptionWrapper: {
     marginTop: theme.spacing.sm,
+    gap: theme.spacing.sm,
   },
 
   description: {
@@ -760,10 +833,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
 
-  checklistRowMenuOpen: {
-    zIndex: 1,
-  },
-
   checklistLabel: {
     color: theme.colors.ink,
     fontSize: 14,
@@ -814,48 +883,6 @@ const styles = StyleSheet.create({
 
   toggleButtonTextActive: {
     color: theme.colors.white,
-  },
-
-  dropdownWrapper: {
-    position: "relative",
-    alignItems: "flex-end",
-  },
-
-  dropdownToggle: {
-    paddingHorizontal: theme.spacing.sm,
-  },
-
-  dropdownMenu: {
-    position: "absolute",
-    top: "100%",
-    right: 0,
-    marginTop: theme.spacing.xs,
-    minWidth: 140,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.white,
-    overflow: "hidden",
-    zIndex: 30,
-    elevation: 8,
-    shadowColor: "#000000",
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    paddingVertical: 6,
-  },
-
-  dropdownMenuItem: {
-    minHeight: 40,
-    paddingHorizontal: theme.spacing.md,
-    justifyContent: "center",
-    backgroundColor: theme.colors.white,
-  },
-
-  dropdownMenuItemText: {
-    color: theme.colors.ink,
-    fontSize: 14,
-    fontWeight: "600",
   },
 
   checklistCustomInput: {
@@ -944,40 +971,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  saveButton: {
+  submitArea: {
+    gap: theme.spacing.md,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xxl,
   },
-
-  statusPill: {
-    minWidth: 88,
-    minHeight: 30,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  statusPillCurrent: {
-    backgroundColor: theme.colors.gold,
-  },
-
-  statusPillUpcoming: {
-    backgroundColor: "#56708A",
-  },
-
-  statusPillCompleted: {
+  submitDisabled: { backgroundColor: theme.colors.mist },
+  submitDisabledText: { color: theme.colors.textMuted },
+  submitError: { color: "#B3261E", fontSize: 14 },
+  submissionNotice: {
+    ...sharedStyles.card,
     backgroundColor: theme.colors.mist,
+    gap: theme.spacing.sm,
   },
-
-  statusPillText: {
-    color: theme.colors.white,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-
-  statusPillCompletedText: {
-    color: theme.colors.ink,
+  submissionNote: {
+    color: theme.colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
   },
 
   tabBar: {

@@ -8,27 +8,37 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 
 import { sharedStyles, theme } from "../../theme/orbital-theme";
-import { Priority, Task, TaskStatus, tasks } from "../../constants/tasks";
+import { Priority, Task, TaskStatus } from "../../constants/tasks";
+import { TaskDropdown } from "../../components/task-dropdown";
+import { TaskStatusBadge } from "../../components/task-status-badge";
+import { useTasks } from "../../hooks/use-tasks";
 
-const statusOptions: Array<"All" | TaskStatus> = [
+const statusOptions: ("All" | TaskStatus)[] = [
   "All",
+  "In Progress",
+  "Not Started",
   "Current",
   "Upcoming",
   "Completed",
 ];
 
-const priorityOptions: Array<"All" | Priority> = [
+const priorityOptions: ("All" | Priority)[] = [
   "All",
   "High",
+  "Normal",
   "Medium",
   "Low",
 ];
 
 export default function TaskListScreen() {
+  const { tasks } = useTasks();
+  const { width } = useWindowDimensions();
+  const wideLayout = width >= 900;
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] =
     useState<(typeof statusOptions)[number]>("All");
@@ -42,7 +52,9 @@ export default function TaskListScreen() {
       const matchesSearch =
         search.length === 0 ||
         task.title.toLowerCase().includes(search) ||
-        task.description.toLowerCase().includes(search);
+        task.description.toLowerCase().includes(search) ||
+        !!task.technician?.toLowerCase().includes(search) ||
+        !!task.location?.toLowerCase().includes(search);
 
       const matchesStatus =
         statusFilter === "All" || task.status === statusFilter;
@@ -52,13 +64,7 @@ export default function TaskListScreen() {
 
       return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [searchText, statusFilter, priorityFilter]);
-
-  const cyclePriority = () => {
-    const currentIndex = priorityOptions.indexOf(priorityFilter);
-    const nextIndex = (currentIndex + 1) % priorityOptions.length;
-    setPriorityFilter(priorityOptions[nextIndex]);
-  };
+  }, [tasks, searchText, statusFilter, priorityFilter]);
 
   return (
     <View style={styles.screen}>
@@ -83,12 +89,12 @@ export default function TaskListScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.page}>
-        <View style={styles.titleRow}>
-          <View>
+      <ScrollView contentContainerStyle={[styles.page, wideLayout && styles.pageWide]}>
+        <View style={[styles.titleRow, !wideLayout && styles.titleRowNarrow]}>
+          <View style={styles.titleArea}>
             <Text style={sharedStyles.heading1}>My Tasks</Text>
             <Text style={styles.subtitle}>
-              Search and review current, upcoming, and completed assignments.
+              Search and review your assigned field work.
             </Text>
           </View>
 
@@ -97,19 +103,19 @@ export default function TaskListScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.filterPanel}>
-          <View style={styles.searchArea}>
+        <View style={[styles.filterPanel, wideLayout && styles.filterPanelWide]}>
+          <View style={[styles.searchArea, wideLayout && styles.searchAreaWide]}>
             <Text style={sharedStyles.label}>Search Tasks</Text>
             <TextInput
               value={searchText}
               onChangeText={setSearchText}
-              placeholder="Search by title or description"
+              placeholder="Search tasks, technicians, or sites"
               placeholderTextColor={theme.colors.textMuted}
               style={sharedStyles.input}
             />
           </View>
 
-          <View style={styles.filterArea}>
+          <View style={[styles.filterArea, wideLayout && styles.filterAreaWide]}>
             <Text style={sharedStyles.label}>Status</Text>
             <View style={styles.statusRow}>
               {statusOptions.map((option) => {
@@ -138,16 +144,14 @@ export default function TaskListScreen() {
             </View>
           </View>
 
-          <View style={styles.priorityArea}>
+          <View style={[styles.priorityArea, wideLayout && styles.priorityAreaWide]}>
             <Text style={sharedStyles.label}>Priority</Text>
-            <Pressable style={styles.dropdownButton} onPress={cyclePriority}>
-              <Text style={styles.dropdownButtonText}>
-                {priorityFilter === "All"
-                  ? "All Priorities"
-                  : priorityFilter}
-              </Text>
-              <Text style={styles.dropdownArrow}>▾</Text>
-            </Pressable>
+            <TaskDropdown
+              label="Priority"
+              value={priorityFilter}
+              options={priorityOptions}
+              onChange={setPriorityFilter}
+            />
           </View>
         </View>
 
@@ -188,18 +192,20 @@ function TaskCard({
   task: Task;
   onPress: () => void;
 }) {
+  const { width } = useWindowDimensions();
   return (
     <Pressable style={styles.taskCard} onPress={onPress}>
       <View style={styles.taskCardAccent} />
 
       <View style={styles.taskMain}>
-        <View style={styles.taskTopRow}>
+        <View style={[styles.taskTopRow, width < 600 && styles.taskTopRowNarrow]}>
           <View style={styles.taskTitleArea}>
             <Text style={styles.taskTitle}>{task.title}</Text>
             <Text style={styles.dueDate}>Due {task.dueDate}</Text>
+            {task.technician && <Text style={styles.dueDate}>{task.technician} · {task.location}</Text>}
           </View>
 
-          <StatusChip status={task.status} />
+          <TaskStatusBadge status={task.status} />
         </View>
 
         <Text style={styles.description}>{task.description}</Text>
@@ -218,38 +224,22 @@ function TaskCard({
           <InfoBadge
             label={
               task.syncStatus === "Unsynced"
-                ? "Offline • Unsynced"
-                : "Up to date"
+                ? "Saved on device · Waiting to sync"
+                : task.syncStatus === "Up to date" && task.status === "Completed" && task.scenario
+                  ? "Synchronized with WMS"
+                  : task.syncStatus
             }
             tone={task.syncStatus === "Unsynced" ? "gold" : "neutral"}
           />
+          {task.scenario === "offline" && task.status !== "Completed" && (
+            <InfoBadge label="Checklist and photos ready for offline use" tone="neutral" />
+          )}
+          {task.safety && <InfoBadge label={`Safety Checklist: ${task.safety.status}`} tone="neutral" />}
         </View>
       </View>
 
       <Text style={styles.chevron}>›</Text>
     </Pressable>
-  );
-}
-
-function StatusChip({ status }: { status: TaskStatus }) {
-  return (
-    <View
-      style={[
-        styles.statusChip,
-        status === "Current" && styles.statusCurrent,
-        status === "Upcoming" && styles.statusUpcoming,
-        status === "Completed" && styles.statusCompleted,
-      ]}
-    >
-      <Text
-        style={[
-          styles.statusChipText,
-          status === "Completed" && styles.statusCompletedText,
-        ]}
-      >
-        {status}
-      </Text>
-    </View>
   );
 }
 
@@ -319,13 +309,26 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xl,
     paddingBottom: 40,
   },
+  pageWide: {
+    padding: 32,
+    paddingBottom: 48,
+  },
+  titleArea: {
+    flex: 1,
+    minWidth: 0,
+  },
+  titleRowNarrow: {
+    flexDirection: "column",
+    gap: theme.spacing.lg,
+  },
 
   titleRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: theme.spacing.xl,
-    marginBottom: theme.spacing.xl,
+    flexWrap: "wrap",
+    marginBottom: theme.spacing.xxl,
   },
 
   subtitle: {
@@ -355,10 +358,17 @@ const styles = StyleSheet.create({
     ...sharedStyles.card,
     flexDirection: "column",
     alignItems: "stretch",
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-    padding: theme.spacing.md,
+    gap: theme.spacing.xl,
+    marginBottom: theme.spacing.xxl,
+    padding: theme.spacing.xl,
   },
+  filterPanelWide: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  searchAreaWide: { flex: 1.2 },
+  filterAreaWide: { flex: 1.4 },
+  priorityAreaWide: { flex: 0.7 },
 
   searchArea: {
     gap: theme.spacing.xs,
@@ -379,7 +389,7 @@ const styles = StyleSheet.create({
   },
 
   filterChip: {
-    minHeight: 36,
+    minHeight: 46,
     flexGrow: 1,
     paddingHorizontal: theme.spacing.sm,
     borderRadius: theme.radius.md,
@@ -405,28 +415,6 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
   },
 
-  dropdownButton: {
-    minHeight: 40,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.white,
-    paddingHorizontal: theme.spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  dropdownButtonText: {
-    fontSize: 15,
-    color: theme.colors.ink,
-  },
-
-  dropdownArrow: {
-    color: theme.colors.navy,
-    fontSize: 18,
-  },
-
   listHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -440,7 +428,7 @@ const styles = StyleSheet.create({
   },
 
   taskList: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.xl,
   },
 
   taskCard: {
@@ -448,7 +436,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.mist,
     borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
+    padding: theme.spacing.xl,
     flexDirection: "row",
     alignItems: "stretch",
 
@@ -475,6 +463,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     gap: theme.spacing.lg,
+    flexWrap: "wrap",
+  },
+  taskTopRowNarrow: {
+    flexDirection: "column",
+    gap: theme.spacing.sm,
   },
 
   taskTitleArea: {
@@ -505,37 +498,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: theme.spacing.sm,
-  },
-
-  statusChip: {
-    minWidth: 88,
-    minHeight: 30,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  statusCurrent: {
-    backgroundColor: theme.colors.navy,
-  },
-
-  statusUpcoming: {
-    backgroundColor: theme.colors.gold,
-  },
-
-  statusCompleted: {
-    backgroundColor: theme.colors.mist,
-  },
-
-  statusChipText: {
-    color: theme.colors.white,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-
-  statusCompletedText: {
-    color: theme.colors.ink,
   },
 
   infoBadge: {

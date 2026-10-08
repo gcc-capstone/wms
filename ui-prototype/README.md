@@ -31,6 +31,28 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Task prototype flow
+
+- Log in to view the responsive task list. Search, status chips, and the priority dropdown can be combined to filter assignments.
+- Open a task and use **View more** to expand its field instructions.
+- Answer each checklist item using Yes/N/A, task-specific dropdown choices, or nonblank notes. **Submit** stays grey and disabled until every item is answered.
+- Submitting marks the task **Completed**, retains its answers, and displays a confirmation. Completed checklists are read-only and their status also updates in the task list.
+- Records are held in memory while the app is open. Reloading or restarting restores the dummy data; no authentication, server submission, or synchronization is performed.
+- Status badges share the same colors across the list and detail screens: navy for Current, gold for Upcoming, and light grey for Completed.
+
+## Representative walkthroughs
+
+The four April assignments at the top of the task list are frontend-only fixtures from `OrbitalTasks.md`. Search by task, technician, or site. Each assignment shows the scenario's technician, date, and location; no real login is required. The October demo assignments remain available.
+
+1. **Sarah Miller, April 20:** Open **Replace Fuse – Control Cabinet 3**. Record the new fuse, select **Good**, and enter **Jeffrey Fisher**. Use **Take photo** and **Use photo** for the inspection sticker. The preview supplies April 20, 2:14 PM, and North Ridge Substation. Submit without confirming the work area to see the named validation error. Confirm the missing item and submit again. Unlike other task forms, this scenario intentionally permits an incomplete Submit attempt to exercise validation.
+2. **Marcus Lee, April 21:** Open **Inspect Control Panel – Pump 2**, create its Safety Checklist, and record the standing-water hazard, PPE, control plan, Elena Rodriguez, and the dummy hazard photo. **Save as draft**, leave the task, and reopen the draft. Record the water-removal resolution, confirm the crew review, and submit. The submitted Safety Checklist stays linked to the task; submitting it does not complete the separate electrical inspection.
+3. **Aisha Patel, April 22:** The list shows **Inspect Pressure Sensor – Pump 4** ready for offline use. Opening it simulates loss of coverage. Enter **62 PSI**, select **Good**, confirm inspection, keep the sensor photo, and submit. Navigate away and return to see completed work waiting on the device. **Simulate connection returning at 3:35 PM** enters Synchronizing; **Finish simulated synchronization** shows receipt of checklist and photograph.
+4. **Daniel Brooks, April 23:** Open **Inspect Repaired Disconnect Switch – Bay 4**, confirm inspection, select **Good**, enter the inspection note, and keep both required photos. Submit, then simulate connection returning at **4:10 PM**. Finish synchronization to see the completed-repair photo fail while the checklist, note, and identification photo succeed. Inspect the retained repair image, **Retry failed photograph**, and finish synchronization again.
+
+All photographs are local dummy SVG illustrations; no camera, GPS, external image URLs, API calls, backend, real offline detection, or actual uploads are used. The synchronization controls are temporary walkthrough controls. Drafts, answers, photos, and simulated sync progress survive navigation while the app is open, but reloads/restarts reset fixtures. Personal notes and reflective "My Thoughts" sections are not implementation requirements.
+
+Run the focused workflow tests with `npm test`; run lint with `npm run lint` and type-check with `npx tsc --noEmit`.
+
 ## Get a fresh project
 
 When you're ready, run:
