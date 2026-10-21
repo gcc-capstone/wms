@@ -117,11 +117,12 @@ export default function SafetyScreen() {
               <Text style={sharedStyles.secondaryButtonText}>Save as draft</Text>
             </Pressable>
             {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-            <Pressable accessibilityRole="button" style={sharedStyles.primaryButton} onPress={() => {
+            <Pressable accessibilityRole="button" style={[sharedStyles.primaryButton, sharedStyles.submitButton]} onPress={() => {
               const result = submitSafety(task.id);
               setError(result.success ? "" : result.error);
+              if (result.success) router.replace(`/tasks/${task.id}`);
             }}>
-              <Text style={sharedStyles.primaryButtonText}>Submit Safety Checklist</Text>
+              <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText]}>Submit Safety Checklist</Text>
             </Pressable>
           </>
         )}
@@ -131,7 +132,7 @@ export default function SafetyScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { width: "100%", maxWidth: 960, alignSelf: "center", padding: theme.spacing.xl, gap: theme.spacing.lg, paddingBottom: 40 },
+  page: { width: "100%", maxWidth: 960, alignSelf: "center", padding: theme.spacing.xl, gap: theme.spacing.lg, paddingBottom: 28 },
   fields: { gap: theme.spacing.sm },
   back: { color: theme.colors.white, fontSize: 16, fontWeight: "600" },
   notes: { minHeight: 90, paddingVertical: theme.spacing.sm, textAlignVertical: "top" },

@@ -1,7 +1,9 @@
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  ActivityIndicator,
+  Animated,
   PanResponder,
   Pressable,
   ScrollView,
@@ -38,6 +40,34 @@ export default function TaskDetailScreen() {
 function TaskDetail({ task }: { task: Task | undefined }) {
   const { submitTask, updateChecklist, createSafety } = useTasks();
   const [submitError, setSubmitError] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const toastOffset = useRef(new Animated.Value(-140)).current;
+
+  useEffect(() => {
+    if (!submitting) return;
+    const timeout = setTimeout(() => {
+      setSubmitting(false);
+      setShowSuccess(true);
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [submitting]);
+
+  useEffect(() => {
+    if (!showSuccess) return;
+    toastOffset.setValue(-140);
+    const animation = Animated.timing(toastOffset, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    });
+    animation.start();
+    const timeout = setTimeout(() => setShowSuccess(false), 4000);
+    return () => {
+      clearTimeout(timeout);
+      animation.stop();
+    };
+  }, [showSuccess, toastOffset]);
 
   const panResponder = useMemo(
     () =>
@@ -136,21 +166,6 @@ function TaskDetail({ task }: { task: Task | undefined }) {
 
           <TaskSyncPanel task={task} />
 
-          {completed && (
-            <View style={styles.submissionNotice} accessibilityLiveRegion="polite">
-              <Text style={sharedStyles.heading2}>
-                {task.syncStatus === "Up to date" ? "Task submitted" : "Task completed on device"}
-              </Text>
-              <Text style={sharedStyles.body}>
-                Completed by {task.completedBy} on {task.completedDate}. Your
-                answers are available below.
-              </Text>
-              <Text style={styles.submissionNote}>
-                Prototype only: records are kept while the app is open, not sent to a server.
-              </Text>
-            </View>
-          )}
-
           {task.scenario === "safety" && !blocked && (
             <SectionCard title="Safety Checklist">
               <Text style={sharedStyles.body}>
@@ -186,7 +201,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
             <TaskAttachments attachments={task.attachments} readOnly={readOnly} />
           )}
 
-          {!readOnly && (
+          {!blocked && (
             <View style={styles.submitArea}>
               {!!submitError && (
                 <Text accessibilityRole="alert" style={styles.submitError}>
@@ -195,22 +210,45 @@ function TaskDetail({ task }: { task: Task | undefined }) {
               )}
               <Pressable
                 accessibilityRole="button"
-                style={sharedStyles.primaryButton}
+                accessibilityState={{ disabled: completed || submitting, busy: submitting }}
+                accessibilityLabel={submitting ? "Submitting task" : undefined}
+                disabled={completed || submitting}
+                style={[sharedStyles.primaryButton, sharedStyles.submitButton, completed && !submitting && styles.submittedButton]}
                 onPress={() => {
                   const result = submitTask(task.id);
+                  if (result.success) setSubmitting(true);
                   setSubmitError(result.success ? "" : result.error);
                 }}
               >
-                <Text style={sharedStyles.primaryButtonText}>
-                  Submit
-                </Text>
+                {submitting ? (
+                  <ActivityIndicator color={theme.colors.white} size="small" />
+                ) : (
+                  <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText, completed && styles.submittedButtonText]}>
+                    {completed ? `Submitted on ${formatSubmissionDate(task.completedDate)}` : "Submit"}
+                  </Text>
+                )}
               </Pressable>
             </View>
           )}
         </ScrollView>
       </View>
+      {showSuccess && (
+        <Animated.View pointerEvents="none" style={[styles.successToastContainer, { transform: [{ translateY: toastOffset }] }]}>
+          <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.successToast}>
+            Submission Successful
+          </Text>
+        </Animated.View>
+      )}
     </View>
   );
+}
+
+function formatSubmissionDate(value: string | null): string {
+  if (!value) return "Unknown date";
+  const numericDate = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!numericDate) return value;
+  return new Date(Number(numericDate[3]), Number(numericDate[1]) - 1, Number(numericDate[2]))
+    .toLocaleDateString("en-US", { month: "long", day: "numeric" });
 }
 
 function TaskInformation({ task }: { task: Task }) {
@@ -792,17 +830,37 @@ const styles = StyleSheet.create({
   submitArea: {
     gap: theme.spacing.md,
     marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.xxl,
+    marginBottom: theme.spacing.sm,
   },
   submissionNotice: {
     ...sharedStyles.card,
     backgroundColor: theme.colors.mist,
     gap: theme.spacing.sm,
   },
-  submissionNote: {
-    color: theme.colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
+  submittedButton: { backgroundColor: "#C8CDD2" },
+  submittedButtonText: { color: theme.colors.textMuted },
+  successToastContainer: {
+    position: "absolute",
+    top: 68,
+    left: 24,
+    right: 24,
+    alignItems: "center",
+    zIndex: 100,
+  },
+  successToast: {
+    backgroundColor: theme.colors.navy,
+    color: theme.colors.white,
+    borderColor: theme.colors.navy,
+    borderWidth: 1,
+    elevation: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: theme.radius.md,
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+    width: "100%",
+    maxWidth: 640,
   },
 
 });

@@ -179,6 +179,16 @@ export const sharedStyles = StyleSheet.create({
     ...theme.typography.button,
   },
 
+  submitButton: {
+    minHeight: 56,
+    paddingVertical: theme.spacing.md,
+  },
+  submitButtonText: {
+    fontSize: 18,
+    lineHeight: 24,
+    textAlign: "center",
+  },
+
   secondaryButton: {
     minHeight: 46,
     borderWidth: 1.5,
