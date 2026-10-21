@@ -21,10 +21,12 @@ function photoUri(kind: PhotoKind): string {
 export function EvidencePhotoCard({
   photo,
   readOnly = false,
+  showMissing = false,
   onKeep,
 }: {
   photo: EvidencePhoto;
   readOnly?: boolean;
+  showMissing?: boolean;
   onKeep: () => void;
 }) {
   const [preview, setPreview] = useState(false);
@@ -70,11 +72,15 @@ export function EvidencePhotoCard({
           <Text style={sharedStyles.secondaryButtonText}>Take photo</Text>
         </Pressable>
       ) : <Text style={styles.note}>No photo attached.</Text>}
+      {showMissing && !photo.attached && (
+        <Text style={styles.error}>* Field Required</Text>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  error: { color: "#B3261E", fontSize: 14 },
   card: { gap: theme.spacing.sm, paddingVertical: theme.spacing.md },
   image: { width: "100%", height: 220, borderRadius: theme.radius.md },
   note: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 19 },

@@ -21,7 +21,6 @@ import {
 import { TaskDropdown } from "../../components/task-dropdown";
 import { EvidencePhotoCard } from "../../components/evidence-photo";
 import { TaskSyncPanel } from "../../components/task-sync-panel";
-import { missingTaskRequirements } from "../../constants/prototype-workflows";
 import { isTaskBlocked } from "../../constants/task-list";
 import { useTasks } from "../../hooks/use-tasks";
 import { sharedStyles, theme } from "../../theme/orbital-theme";
@@ -92,9 +91,6 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   const completed = task.status === "Completed";
   const blocked = isTaskBlocked(task);
   const readOnly = completed || blocked;
-  const missing = missingTaskRequirements(task);
-  const canSubmit = !readOnly && missing.length === 0;
-  const submitDisabled = !canSubmit && task.scenario !== "validation";
 
   const setCustomText = (itemId: string, text: string) => {
     if (readOnly) return;
@@ -185,18 +181,13 @@ function TaskDetail({ task }: { task: Task | undefined }) {
             readOnly={readOnly}
             showMissing={!!submitError}
           />
-          <TaskPhotos task={task} />
+          <TaskPhotos task={task} showMissing={!!submitError} />
           {task.attachments.length > 0 && (
             <TaskAttachments attachments={task.attachments} readOnly={readOnly} />
           )}
 
           {!readOnly && (
             <View style={styles.submitArea}>
-              <Text style={styles.submissionNote}>
-                {canSubmit
-                  ? "All items complete. Ready to submit."
-                  : `Complete all checklist items and required photographs to submit (${answeredCount}/${checklist.length} checklist items).`}
-              </Text>
               {!!submitError && (
                 <Text accessibilityRole="alert" style={styles.submitError}>
                   {submitError}
@@ -204,23 +195,13 @@ function TaskDetail({ task }: { task: Task | undefined }) {
               )}
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ disabled: submitDisabled }}
-                disabled={submitDisabled}
-                style={[
-                  sharedStyles.primaryButton,
-                  submitDisabled && styles.submitDisabled,
-                ]}
+                style={sharedStyles.primaryButton}
                 onPress={() => {
                   const result = submitTask(task.id);
                   setSubmitError(result.success ? "" : result.error);
                 }}
               >
-                <Text
-                  style={[
-                    sharedStyles.primaryButtonText,
-                    submitDisabled && styles.submitDisabledText,
-                  ]}
-                >
+                <Text style={sharedStyles.primaryButtonText}>
                   Submit
                 </Text>
               </Pressable>
@@ -412,13 +393,13 @@ function ChecklistRow({
         />
       )}
       {showMissing && !isChecklistItemAnswered(item) && (
-        <Text style={styles.submitError}>Required: {item.label}</Text>
+        <Text style={styles.submitError}>* Field Required</Text>
       )}
     </View>
   );
 }
 
-function TaskPhotos({ task }: { task: Task }) {
+function TaskPhotos({ task, showMissing }: { task: Task; showMissing: boolean }) {
   const { keepPhoto } = useTasks();
   if (!task.photos?.length) return null;
   return (
@@ -427,6 +408,7 @@ function TaskPhotos({ task }: { task: Task }) {
         <EvidencePhotoCard
           key={photo.id}
           photo={photo}
+          showMissing={showMissing}
           readOnly={task.status === "Completed" || isTaskBlocked(task)}
           onKeep={() => keepPhoto(task.id, photo.id)}
         />
@@ -824,14 +806,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  submitError: { color: "#B3261E", fontSize: 14 },
   submitArea: {
     gap: theme.spacing.md,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xxl,
   },
-  submitDisabled: { backgroundColor: theme.colors.mist },
-  submitDisabledText: { color: theme.colors.textMuted },
-  submitError: { color: "#B3261E", fontSize: 14 },
   submissionNotice: {
     ...sharedStyles.card,
     backgroundColor: theme.colors.mist,

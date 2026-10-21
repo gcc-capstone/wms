@@ -78,7 +78,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     if (missing.length) {
       return {
         success: false,
-        error: `Required information missing: ${missing.join("; ")}`,
+        error: "Required Fields Missing",
       };
     }
     changeTask(id, completeTask);
@@ -109,7 +109,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     if (!task?.safety) return { success: false, error: "Safety Checklist not found." };
     if (task.safety.status === "Submitted") return { success: false, error: "Safety Checklist already submitted." };
     const missing = missingSafetyRequirements(task.safety);
-    if (missing.length) return { success: false, error: `Required information missing: ${missing.join("; ")}` };
+    if (missing.length) return { success: false, error: "Required Fields Missing" };
     changeTask(id, (entry) => {
       if (!entry.safety) throw new Error("Safety Checklist not found.");
       return { ...entry, safety: {

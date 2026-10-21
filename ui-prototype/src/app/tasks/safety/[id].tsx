@@ -53,6 +53,7 @@ export default function SafetyScreen() {
             onChange={(condition) => updateSafety(task.id, { condition })}
             disabled={readOnly}
           />
+          {!!error && !safety.condition && <Text style={styles.error}>* Field Required</Text>}
           <Text style={sharedStyles.label}>Required PPE (select all that apply)</Text>
           {["Safety glasses", "Insulated gloves", "Hard hat", "Safety boots"].map((ppe) => (
             <Pressable
@@ -69,6 +70,7 @@ export default function SafetyScreen() {
               <Text style={sharedStyles.body}>{safety.ppe.includes(ppe) ? "☑" : "☐"} {ppe}</Text>
             </Pressable>
           ))}
+          {!!error && safety.ppe.length === 0 && <Text style={styles.error}>* Field Required</Text>}
           {([
             ["hazard", "Hazard description"],
             ["controlPlan", "Control plan"],
@@ -85,10 +87,12 @@ export default function SafetyScreen() {
                 multiline={key !== "crewMember"}
                 style={[sharedStyles.input, key !== "crewMember" && styles.notes]}
               />
+              {!!error && !safety[key].trim() && <Text style={styles.error}>* Field Required</Text>}
             </View>
           ))}
           <EvidencePhotoCard
             photo={safety.photo}
+            showMissing={!!error}
             readOnly={readOnly}
             onKeep={() => keepPhoto(task.id, "hazard", true)}
           />
@@ -102,8 +106,8 @@ export default function SafetyScreen() {
           >
             <Text style={sharedStyles.body}>{safety.reviewedWithCrew ? "☑" : "☐"} Safety requirements reviewed with crew</Text>
           </Pressable>
+          {!!error && !safety.reviewedWithCrew && <Text style={styles.error}>* Field Required</Text>}
         </View>
-        {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         {!readOnly && (
           <>
             <Pressable accessibilityRole="button" style={sharedStyles.secondaryButton} onPress={() => {
@@ -112,6 +116,7 @@ export default function SafetyScreen() {
             }}>
               <Text style={sharedStyles.secondaryButtonText}>Save as draft</Text>
             </Pressable>
+            {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
             <Pressable accessibilityRole="button" style={sharedStyles.primaryButton} onPress={() => {
               const result = submitSafety(task.id);
               setError(result.success ? "" : result.error);
@@ -130,6 +135,6 @@ const styles = StyleSheet.create({
   fields: { gap: theme.spacing.sm },
   back: { color: theme.colors.white, fontSize: 16, fontWeight: "600" },
   notes: { minHeight: 90, paddingVertical: theme.spacing.sm, textAlignVertical: "top" },
-  check: { minHeight: 44, justifyContent: "center" },
   error: { color: "#B3261E", fontSize: 15, lineHeight: 22 },
+  check: { minHeight: 44, justifyContent: "center" },
 });
