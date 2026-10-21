@@ -34,7 +34,7 @@ export type SafetyChecklist = {
   photo: EvidencePhoto;
 };
 export type ChecklistResponse = string;
-// Each checklist item takes exactly one input form: a Yes/N/A toggle,
+// Each checklist item takes exactly one input form: a Yes/No/N/A choice,
 // a task-specific dropdown, or a free-form text answer.
 export type ChecklistKind = "yesNo" | "dropdown" | "text";
 
@@ -44,7 +44,6 @@ export type ChecklistItem = {
   response: ChecklistResponse | null;
   // Free-form answer typed by the user. Only used when kind is "text".
   customText: string;
-  allowNA?: boolean;
 } & (
   | { kind: "dropdown"; options: string[] }
   | { kind: "yesNo" | "text" }
@@ -300,7 +299,7 @@ export function isChecklistItemAnswered(item: ChecklistItem): boolean {
     case "text":
       return item.customText.trim().length > 0;
     case "yesNo":
-      return item.response === "Yes" || (item.allowNA !== false && item.response === "N/A");
+      return item.response === "Yes" || item.response === "No" || item.response === "N/A";
     case "dropdown":
       return item.response !== null && item.options.includes(item.response);
   }

@@ -82,7 +82,7 @@ test("Task submission requires real text and required photos", () => {
     "Pressure-sensor photograph",
   ]);
   assert.throws(() => completeTask(task), /Required information missing/);
-  assert.equal(isChecklistItemAnswered({ ...task.checklist[0], response: "N/A" }), false);
+  assert.equal(isChecklistItemAnswered({ ...task.checklist[0], response: "N/A" }), true);
 });
 
 test("Marcus draft is task-linked and auto-populates known fields", () => {
@@ -233,4 +233,20 @@ test("submitted Available tasks move to Completed without losing answers", () =>
   assert.equal(filterTasks([completed], "Available", "").length, 0);
   assert.deepEqual(filterTasks([completed], "Completed", ""), [completed]);
   assert.deepEqual(completed.checklist, task.checklist);
+});
+
+
+test("new checklist choices start unanswered and accept Yes, No, and N/A", () => {
+  for (const task of representativeTasks) {
+    for (const item of task.checklist.filter((entry) => entry.kind === "yesNo")) {
+      assert.equal(item.response, null);
+      for (const response of ["Yes", "No", "N/A"]) {
+        assert.equal(isChecklistItemAnswered({ ...item, response }), true);
+      }
+      assert.equal(isChecklistItemAnswered({ ...item, response: null }), false);
+    }
+  }
+  const legacyTask = tasks.find((task) => task.id === 1);
+  assert.equal(legacyTask.checklist.find((item) => item.id === "c4").response, null);
+  assert.equal(legacyTask.checklist.find((item) => item.id === "c3").response, "N/A");
 });

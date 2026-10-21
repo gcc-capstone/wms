@@ -1,7 +1,7 @@
 import type { ChecklistItem, EvidencePhoto, PhotoKind, Task } from "./tasks";
 
 function check(id: string, label: string): ChecklistItem {
-  return { id, label, kind: "yesNo", response: null, customText: "", allowNA: false };
+  return { id, label, kind: "yesNo", response: null, customText: "" };
 }
 
 function text(id: string, label: string): ChecklistItem {

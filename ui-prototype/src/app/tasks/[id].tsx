@@ -326,47 +326,29 @@ function ChecklistRow({
 
         {item.kind === "yesNo" && (
           <View style={styles.controlRow}>
-            <Pressable
+            {(["Yes", "No", "N/A"] as const).map((option) => (
+              <Pressable
+                key={option}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.label}: Yes`}
-                accessibilityState={{ selected: item.response === "Yes", disabled: readOnly }}
+                accessibilityLabel={`${item.label}: ${option}`}
+                accessibilityState={{ selected: item.response === option, disabled: readOnly }}
                 disabled={readOnly}
                 style={[
                   styles.toggleButton,
-                  item.response === "Yes" && styles.toggleButtonActive,
+                  item.response === option && styles.toggleButtonActive,
                 ]}
-                onPress={() => onSetResponse(item.id, "Yes")}
+                onPress={() => onSetResponse(item.id, option)}
               >
                 <Text
                   style={[
                     styles.toggleButtonText,
-                    item.response === "Yes" && styles.toggleButtonTextActive,
+                    item.response === option && styles.toggleButtonTextActive,
                   ]}
                 >
-                  Yes
+                  {option}
                 </Text>
-            </Pressable>
-
-            {item.allowNA !== false && <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${item.label}: N/A`}
-                accessibilityState={{ selected: item.response === "N/A", disabled: readOnly }}
-                disabled={readOnly}
-                style={[
-                  styles.toggleButton,
-                  item.response === "N/A" && styles.toggleButtonActive,
-                ]}
-                onPress={() => onSetResponse(item.id, "N/A")}
-              >
-                <Text
-                  style={[
-                    styles.toggleButtonText,
-                    item.response === "N/A" && styles.toggleButtonTextActive,
-                  ]}
-                >
-                  N/A
-                </Text>
-            </Pressable>}
+              </Pressable>
+            ))}
           </View>
         )}
       </View>
