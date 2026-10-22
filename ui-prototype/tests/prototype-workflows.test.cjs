@@ -19,6 +19,7 @@ const {
   isTaskBlocked,
   taskCategories,
   taskCategory,
+  taskDisplayStatus,
 } = require("../src/constants/task-list.ts");
 const {
   missingTaskRequirements,
@@ -135,7 +136,7 @@ test("Aisha stays pending offline until connection returns", () => {
   assert.equal(completed.status, "Pending");
   assert.equal(completed.completedDate, null);
   assert.equal(completed.completedBy, null);
-  assert.equal(taskCategory(completed), "Available");
+  assert.equal(taskCategory(completed), "My Tasks");
   const synced = uploadPendingTask(completed);
   assert.equal(synced.status, "Completed");
   assert.equal(synced.completedDate, "April 22");
@@ -157,7 +158,7 @@ test("Daniel partial photo failure retries only the failed upload", () => {
   const pending = completeTask(task);
   assert.equal(pending.status, "Pending");
   assert.equal(pending.completedDate, null);
-  assert.equal(taskCategory(pending), "Available");
+  assert.equal(taskCategory(pending), "My Tasks");
   assert.ok(pending.photos.every((photo) => photo.upload === "Saved on device"));
   assert.throws(() => completeTask(pending), /already been submitted/);
   const failed = uploadPendingTask(pending);
@@ -204,34 +205,39 @@ test("legacy October sample tasks remain usable", () => {
   assert.ok(tasks.some((entry) => entry.id === 5 && entry.status === "Completed"));
 });
 
-test("list categories separate blocked, actionable, and completed tasks", () => {
-  assert.deepEqual(taskCategories, ["Current", "Available", "Completed"]);
+test("My Tasks combines Current, Available, and Pending with distinct display statuses", () => {
+  assert.deepEqual(taskCategories, ["My Tasks", "Completed"]);
   const expected = {
     Current: "Available",
     "In Progress": "Available",
     "Not Started": "Available",
     Upcoming: "Current",
+    Pending: "Pending",
     Completed: "Completed",
   };
-  for (const [status, category] of Object.entries(expected)) {
-    assert.equal(taskCategory({ ...tasks[0], status }), category);
+  for (const [status, displayStatus] of Object.entries(expected)) {
+    const task = { ...tasks[0], status };
+    assert.equal(taskDisplayStatus(task), displayStatus);
+    assert.equal(taskCategory(task), status === "Completed" ? "Completed" : "My Tasks");
   }
   const groups = taskCategories.flatMap((category) => filterTasks(tasks, category, ""));
   assert.equal(groups.length, tasks.length);
   assert.equal(new Set(groups.map((task) => task.id)).size, tasks.length);
-  assert.ok(filterTasks(tasks, "Current", "").every(isTaskBlocked));
-  assert.ok(representativeTasks.every((task) => taskCategory(task) === "Available"));
+  const active = filterTasks(tasks, "My Tasks", "");
+  assert.ok(active.some(isTaskBlocked));
+  assert.ok(active.some((task) => taskDisplayStatus(task) === "Available"));
+  assert.ok(representativeTasks.every((task) => taskCategory(task) === "My Tasks"));
 });
 
 test("search matches task titles within the selected category only", () => {
   assert.deepEqual(
-    filterTasks(tasks, "Available", "  PRESSURE SENSOR  ").map((task) => task.scenario),
+    filterTasks(tasks, "My Tasks", "  PRESSURE SENSOR  ").map((task) => task.scenario),
     ["offline"],
   );
-  assert.deepEqual(filterTasks(tasks, "Current", "pressure sensor"), []);
-  assert.deepEqual(filterTasks(tasks, "Available", "Sarah Miller"), []);
-  assert.deepEqual(filterTasks(tasks, "Available", "North Ridge Substation"), []);
-  assert.deepEqual(filterTasks(tasks, "Available", "no such task"), []);
+  assert.deepEqual(filterTasks(tasks, "Completed", "pressure sensor"), []);
+  assert.deepEqual(filterTasks(tasks, "My Tasks", "Sarah Miller"), []);
+  assert.deepEqual(filterTasks(tasks, "My Tasks", "North Ridge Substation"), []);
+  assert.deepEqual(filterTasks(tasks, "My Tasks", "no such task"), []);
 });
 
 test("Current tasks cannot be submitted even with a fully answered checklist", () => {
@@ -243,18 +249,18 @@ test("Current tasks cannot be submitted even with a fully answered checklist", (
   }));
   assert.deepEqual(missingTaskRequirements(task), ["A prerequisite task must be completed first."]);
   assert.throws(() => completeTask(task), /prerequisite task must be completed/);
-  assert.equal(taskCategory(task), "Current");
+  assert.equal(taskCategory(task), "My Tasks");
 });
 
-test("offline submissions remain Available until uploaded without losing answers", () => {
+test("offline submissions remain in My Tasks until uploaded without losing answers", () => {
   const task = attachAll(answer(scenario("offline"), {
     inspected: "Yes", pressure: "62 PSI", condition: "Good",
   }));
   const pending = completeTask(task);
-  assert.deepEqual(filterTasks([pending], "Available", ""), [pending]);
+  assert.deepEqual(filterTasks([pending], "My Tasks", ""), [pending]);
   assert.deepEqual(filterTasks([pending], "Completed", ""), []);
   const completed = uploadPendingTask(pending);
-  assert.equal(filterTasks([completed], "Available", "").length, 0);
+  assert.equal(filterTasks([completed], "My Tasks", "").length, 0);
   assert.deepEqual(filterTasks([completed], "Completed", ""), [completed]);
   assert.deepEqual(completed.checklist, task.checklist);
 });
@@ -285,6 +291,6 @@ test("offline walkthrough submits as Pending even if a previous session restored
   assert.equal(pending.status, "Pending");
   assert.equal(pending.connection, "Offline");
   assert.equal(pending.completedDate, null);
-  assert.equal(taskCategory(pending), "Available");
+  assert.equal(taskCategory(pending), "My Tasks");
   assert.equal(uploadPendingTask(pending).status, "Completed");
 });

@@ -24,7 +24,8 @@ import {
 import { TaskDropdown } from "../../components/task-dropdown";
 import { EvidencePhotoCard } from "../../components/evidence-photo";
 import { TaskSyncPanel } from "../../components/task-sync-panel";
-import { isTaskBlocked } from "../../constants/task-list";
+import { isTaskBlocked, taskDisplayStatus } from "../../constants/task-list";
+import { TaskStatusBadge } from "../../components/task-status-badge";
 import { useTasks } from "../../hooks/use-tasks";
 import { sharedStyles, theme } from "../../theme/orbital-theme";
 
@@ -144,29 +145,32 @@ function TaskDetail({ task }: { task: Task | undefined }) {
         >
           <Text style={styles.backButtonText}>‹ Tasks</Text>
         </Pressable>
-        {(task.scenario === "offline" || task.scenario === "uploadFailure") && (!submitted || submitting) && (
-          <View accessible accessibilityRole="image" accessibilityLabel="No connection" style={styles.connectionIcon}>
-            <SymbolView
-              name={{ ios: "wifi.slash", android: "signal_wifi_off", web: "signal_wifi_off" }}
-              tintColor={theme.colors.white}
-              size={26}
-              fallback={<Text style={styles.connectionFallback}>⊘</Text>}
-            />
-          </View>
-        )}
-        {pending && !submitting && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Upload Pending: Simulate connection returning at ${task.scenario === "uploadFailure" ? "4:10 PM" : "3:35 PM"}`}
-            style={styles.uploadPending}
-            onPress={() => {
-              setShowSuccess(false);
-              uploadPending(task.id);
-            }}
-          >
-            <Text style={styles.uploadPendingText}>Upload Pending</Text>
-          </Pressable>
-        )}
+        <View style={styles.headerStatus}>
+          {(task.scenario === "offline" || task.scenario === "uploadFailure") && (!submitted || submitting) && (
+            <View accessible accessibilityRole="image" accessibilityLabel="No connection" style={styles.connectionIcon}>
+              <SymbolView
+                name={{ ios: "wifi.slash", android: "signal_wifi_off", web: "signal_wifi_off" }}
+                tintColor={theme.colors.white}
+                size={26}
+                fallback={<Text style={styles.connectionFallback}>⊘</Text>}
+              />
+            </View>
+          )}
+          {pending && !submitting ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Pending: Simulate connection returning at ${task.scenario === "uploadFailure" ? "4:10 PM" : "3:35 PM"}`}
+              onPress={() => {
+                setShowSuccess(false);
+                uploadPending(task.id);
+              }}
+            >
+              <TaskStatusBadge status="Pending" header />
+            </Pressable>
+          ) : (
+            <TaskStatusBadge status={taskDisplayStatus(task)} header />
+          )}
+        </View>
       </View>
 
       <View style={styles.body} {...panResponder.panHandlers}>
@@ -870,14 +874,7 @@ const styles = StyleSheet.create({
   submittedButton: { backgroundColor: "#C8CDD2" },
   connectionIcon: { minWidth: 40, minHeight: 40, alignItems: "center", justifyContent: "center" },
   connectionFallback: { color: theme.colors.white, fontSize: 28 },
-  uploadPending: {
-    backgroundColor: theme.colors.pending,
-    borderRadius: theme.radius.sm,
-    paddingHorizontal: theme.spacing.md,
-    minHeight: 40,
-    justifyContent: "center",
-  },
-  uploadPendingText: { color: theme.colors.ink, fontSize: 14, fontWeight: "700" },
+  headerStatus: { flexDirection: "row", alignItems: "center", gap: theme.spacing.sm },
   submittedButtonText: { color: theme.colors.textMuted },
   successToastContainer: {
     position: "absolute",

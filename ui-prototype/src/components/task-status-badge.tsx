@@ -1,22 +1,20 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { TaskStatus } from "../constants/tasks";
+import { TaskDisplayStatus } from "../constants/task-list";
 import { theme } from "../theme/orbital-theme";
 
-const statusColors: Record<TaskStatus, { backgroundColor: string; color: string }> = {
-  Current: { backgroundColor: theme.colors.navy, color: theme.colors.white },
-  "In Progress": { backgroundColor: theme.colors.navy, color: theme.colors.white },
-  Upcoming: { backgroundColor: theme.colors.gold, color: theme.colors.ink },
-  "Not Started": { backgroundColor: theme.colors.gold, color: theme.colors.ink },
-  Completed: { backgroundColor: theme.colors.mist, color: theme.colors.ink },
-  Pending: { backgroundColor: theme.colors.pending, color: theme.colors.ink },
+export const statusColors: Record<TaskDisplayStatus, { backgroundColor: string; color: string; accent: string }> = {
+  Current: { backgroundColor: theme.colors.current, color: theme.colors.ink, accent: theme.colors.currentAccent },
+  Available: { backgroundColor: theme.colors.available, color: theme.colors.ink, accent: theme.colors.availableAccent },
+  Completed: { backgroundColor: theme.colors.completed, color: theme.colors.ink, accent: theme.colors.completedAccent },
+  Pending: { backgroundColor: theme.colors.pending, color: theme.colors.ink, accent: theme.colors.pendingAccent },
 };
 
-export function TaskStatusBadge({ status }: { status: TaskStatus }) {
+export function TaskStatusBadge({ status, header = false, label = status }: { status: TaskDisplayStatus; header?: boolean; label?: string }) {
   const colors = statusColors[status];
   return (
-    <View style={[styles.badge, { backgroundColor: colors.backgroundColor }]}>
-      <Text style={[styles.text, { color: colors.color }]}>{status}</Text>
+    <View style={[styles.badge, header && styles.headerBadge, { backgroundColor: colors.backgroundColor }]}>
+      <Text style={[styles.text, header && styles.headerText, { color: colors.color }]}>{label}</Text>
     </View>
   );
 }
@@ -31,4 +29,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   text: { fontSize: 12, fontWeight: "700" },
+  headerBadge: { minHeight: 40, borderRadius: theme.radius.sm },
+  headerText: { fontSize: 14 },
 });

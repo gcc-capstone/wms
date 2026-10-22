@@ -19,9 +19,10 @@ import {
   filterTasks,
   taskCategories,
   TaskCategory,
+  taskDisplayStatus,
 } from "../../constants/task-list";
 import { useTasks } from "../../hooks/use-tasks";
-import { TaskStatusBadge } from "../../components/task-status-badge";
+import { statusColors, TaskStatusBadge } from "../../components/task-status-badge";
 import { TopToast } from "../../components/top-toast";
 import { usePullToRefresh } from "../../hooks/use-pull-to-refresh";
 
@@ -39,7 +40,7 @@ export default function TaskListScreen() {
   }, [draftSavedPending, acknowledgeDraftSaved]));
   const { width } = useWindowDimensions();
   const [searchText, setSearchText] = useState("");
-  const [category, setCategory] = useState<TaskCategory>("Available");
+  const [category, setCategory] = useState<TaskCategory>("My Tasks");
   const filteredTasks = useMemo(
     () => filterTasks(tasks, category, searchText),
     [tasks, category, searchText],
@@ -110,11 +111,6 @@ export default function TaskListScreen() {
               </View>
             </View>
 
-            {category === "Current" && (
-              <Text style={styles.helperText}>
-                These tasks are waiting for a prerequisite task to be completed.
-              </Text>
-            )}
             <Text style={styles.resultCount}>
               {filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
             </Text>
@@ -127,12 +123,12 @@ export default function TaskListScreen() {
                   style={styles.taskCard}
                   onPress={() => router.push(`/tasks/${task.id}`)}
                 >
-                  <View style={styles.taskCardAccent} />
+                  <View style={[styles.taskCardAccent, { backgroundColor: statusColors[taskDisplayStatus(task)].accent }]} />
                   <View style={styles.taskMain}>
                     <Text style={styles.taskTitle}>{task.title}</Text>
                     <Text style={styles.dueDate}>Due {task.dueDate}</Text>
                   </View>
-                  {task.status === "Pending" && <TaskStatusBadge status="Pending" />}
+                  <TaskStatusBadge status={taskDisplayStatus(task)} />
                   <Text style={styles.chevron}>›</Text>
                 </Pressable>
               ))}
@@ -206,7 +202,6 @@ const styles = StyleSheet.create({
     width: 4,
     alignSelf: "stretch",
     borderRadius: 3,
-    backgroundColor: theme.colors.gold,
     marginRight: theme.spacing.md,
   },
   taskMain: { flex: 1, minWidth: 0 },
