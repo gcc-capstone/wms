@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
   Animated,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,11 +27,9 @@ import { EvidencePhotoCard } from "../../components/evidence-photo";
 import { TaskSyncPanel } from "../../components/task-sync-panel";
 import { isTaskBlocked, taskDisplayStatus } from "../../constants/task-list";
 import { TaskStatusBadge } from "../../components/task-status-badge";
+import { useSmoothReturn } from "../../components/android-back-transition";
 import { useTasks } from "../../hooks/use-tasks";
 import { sharedStyles, theme } from "../../theme/orbital-theme";
-
-// Horizontal swipe distance (in px) required to dismiss back to the task list.
-const SWIPE_DISMISS_THRESHOLD = 70;
 
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,12 +39,13 @@ export default function TaskDetailScreen() {
 }
 
 function TaskDetail({ task }: { task: Task | undefined }) {
+  const returnToTasks = useSmoothReturn("/tasks");
   const { tasks, submitTask, updateChecklist, createSafety, uploadPending } = useTasks();
   const [submitError, setSubmitError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const toastOffset = useRef(new Animated.Value(-140)).current;
+  const [toastOffset] = useState(() => new Animated.Value(-140));
 
   useEffect(() => {
     if (!submitting) return;
@@ -72,20 +72,18 @@ function TaskDetail({ task }: { task: Task | undefined }) {
     };
   }, [showSuccess, toastOffset]);
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponderCapture: (_, gesture) =>
-          Math.abs(gesture.dx) > 16 &&
-          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
-        onPanResponderRelease: (_, gesture) => {
-          if (Math.abs(gesture.dx) > SWIPE_DISMISS_THRESHOLD) {
-            router.replace("/tasks");
-          }
-        },
-      }),
-    []
-  );
+  // iOS uses the native stack's interactive edge gesture. Other platforms
+  // keep a rightward-only fallback without competing with native gestures.
+  const backSwipe = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_, gesture) =>
+      Platform.OS !== "ios" && gesture.x0 <= 32 && gesture.dx > 16 &&
+      gesture.dx > Math.abs(gesture.dy) * 1.5,
+    onPanResponderRelease: (_, gesture) => {
+      if (gesture.dx > 70 && gesture.dx > Math.abs(gesture.dy) * 1.5) {
+        returnToTasks();
+      }
+    },
+  }), [returnToTasks]);
 
   if (!task) {
     return (
@@ -142,7 +140,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
-          onPress={() => router.replace("/tasks")}
+          onPress={returnToTasks}
         >
           <Text style={styles.backButtonText}>‹ Tasks</Text>
         </Pressable>
@@ -174,7 +172,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
         </View>
       </View>
 
-      <View style={styles.body} {...panResponder.panHandlers}>
+      <View style={styles.body} {...backSwipe.panHandlers}>
         <ScrollView contentContainerStyle={styles.page}>
           <View style={styles.titleBlock}>
             <Text style={styles.taskCode}>

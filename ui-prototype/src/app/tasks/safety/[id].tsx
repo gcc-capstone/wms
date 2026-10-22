@@ -3,12 +3,14 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { EvidencePhotoCard } from "../../../components/evidence-photo";
+import { useSmoothReturn } from "../../../components/android-back-transition";
 import { TaskDropdown } from "../../../components/task-dropdown";
 import { useTasks } from "../../../hooks/use-tasks";
 import { sharedStyles, theme } from "../../../theme/orbital-theme";
 
 export default function SafetyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const returnToTask = useSmoothReturn(`/tasks/${Number(id)}`);
   const { tasks, updateSafety, keepPhoto, saveSafety, submitSafety } = useTasks();
   const task = tasks.find((entry) => entry.id === Number(id));
   const [error, setError] = useState("");
@@ -28,7 +30,7 @@ export default function SafetyScreen() {
   return (
     <View style={sharedStyles.screen}>
       <View style={sharedStyles.header}>
-        <Pressable accessibilityRole="button" onPress={() => router.replace(`/tasks/${task.id}`)}>
+        <Pressable accessibilityRole="button" onPress={returnToTask}>
           <Text style={styles.back}>‹ Related task</Text>
         </Pressable>
         <Text style={styles.back}>{safety.status}</Text>
@@ -112,7 +114,7 @@ export default function SafetyScreen() {
           <>
             <Pressable accessibilityRole="button" style={sharedStyles.secondaryButton} onPress={() => {
               saveSafety(task.id);
-              router.replace(`/tasks/${task.id}`);
+              returnToTask();
             }}>
               <Text style={sharedStyles.secondaryButtonText}>Save as draft</Text>
             </Pressable>
@@ -120,7 +122,7 @@ export default function SafetyScreen() {
             <Pressable accessibilityRole="button" style={[sharedStyles.primaryButton, sharedStyles.submitButton]} onPress={() => {
               const result = submitSafety(task.id);
               setError(result.success ? "" : result.error);
-              if (result.success) router.replace(`/tasks/${task.id}`);
+              if (result.success) returnToTask();
             }}>
               <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText]}>Submit Safety Checklist</Text>
             </Pressable>
