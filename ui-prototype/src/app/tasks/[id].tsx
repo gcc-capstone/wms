@@ -402,6 +402,19 @@ function ChecklistRow({
           <Text style={styles.checklistLabel}>{item.label}</Text>
         </View>
 
+        {item.kind === "checkbox" && (
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityLabel={item.label}
+            accessibilityState={{ checked: item.response === "Yes", disabled: readOnly }}
+            disabled={readOnly}
+            style={styles.checklistCheckbox}
+            onPress={() => onSetResponse(item.id, item.response === "Yes" ? "No" : "Yes")}
+          >
+            <Text style={styles.checklistCheckboxIcon}>{item.response === "Yes" ? "☑" : "☐"}</Text>
+          </Pressable>
+        )}
+
         {item.kind === "yesNo" && (
           <View style={styles.controlRow}>
             {(["Yes", "No", "N/A"] as const).map((option) => (
@@ -727,6 +740,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
 
+  checklistCheckbox: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  checklistCheckboxIcon: { color: theme.colors.ink, fontSize: 24, lineHeight: 30 },
   checklistLabel: {
     color: theme.colors.ink,
     fontSize: 14,

@@ -394,3 +394,19 @@ test("Error tasks sort first in My Tasks, with date order within each group", ()
   assert.deepEqual(filterTasks(entries, "My Tasks", "", ["Error"]).map((task) => task.id), [704, 702]);
   assert.deepEqual(filterTasks(entries, "Completed", ""), []);
 });
+
+
+test("Bay 4 inspection checkbox must be checked to submit", () => {
+  const task = attachAll(answer(scenario("uploadFailure"), { condition: "Good", note: "Repair inspected" }));
+  const checkbox = task.checklist.find((item) => item.id === "inspected");
+  assert.equal(checkbox.kind, "checkbox");
+  for (const response of [null, "No", "N/A"]) {
+    const unchecked = answer(structuredClone(task), { inspected: response });
+    assert.equal(isChecklistItemAnswered(unchecked.checklist.find((item) => item.id === "inspected")), false);
+    assert.deepEqual(missingTaskRequirements(unchecked), ["Repair visually inspected"]);
+  }
+  const checked = answer(task, { inspected: "Yes" });
+  assert.deepEqual(missingTaskRequirements(checked), []);
+  assert.equal(completeTask(checked).status, "Pending");
+  assert.equal(scenario("offline").checklist.find((item) => item.id === "inspected").kind, "yesNo");
+});

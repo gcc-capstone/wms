@@ -35,8 +35,8 @@ export type SafetyChecklist = {
 };
 export type ChecklistResponse = string;
 // Each checklist item takes exactly one input form: a Yes/No/N/A choice,
-// a task-specific dropdown, or a free-form text answer.
-export type ChecklistKind = "yesNo" | "dropdown" | "text";
+// a checkbox, a task-specific dropdown, or a free-form text answer.
+export type ChecklistKind = "yesNo" | "checkbox" | "dropdown" | "text";
 
 export type ChecklistItem = {
   id: string;
@@ -46,7 +46,7 @@ export type ChecklistItem = {
   customText: string;
 } & (
   | { kind: "dropdown"; options: string[] }
-  | { kind: "yesNo" | "text" }
+  | { kind: "yesNo" | "checkbox" | "text" }
 );
 
 export type Attachment = {
@@ -301,6 +301,8 @@ export function isChecklistItemAnswered(item: ChecklistItem): boolean {
   switch (item.kind) {
     case "text":
       return item.customText.trim().length > 0;
+    case "checkbox":
+      return item.response === "Yes";
     case "yesNo":
       return item.response === "Yes" || item.response === "No" || item.response === "N/A";
     case "dropdown":
