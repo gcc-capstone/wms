@@ -220,12 +220,7 @@ export const sharedStyles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     padding: theme.spacing.lg,
 
-    shadowColor: "#000000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-
-    elevation: 2,
+    boxShadow: "0px 3px 8px rgba(0, 0, 0, 0.06)",
   },
 
   cardAccent: {

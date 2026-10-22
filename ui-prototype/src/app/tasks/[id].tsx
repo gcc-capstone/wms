@@ -459,7 +459,6 @@ function ChecklistRow({
 }
 
 function TaskPhotos({ task, showMissing }: { task: Task; showMissing: boolean }) {
-  const { keepPhoto } = useTasks();
   if (!task.photos?.length) return null;
   return (
     <SectionCard title="Required photographs">
@@ -467,9 +466,9 @@ function TaskPhotos({ task, showMissing }: { task: Task; showMissing: boolean })
         <EvidencePhotoCard
           key={photo.id}
           photo={photo}
+          taskId={task.id}
           showMissing={showMissing}
           readOnly={task.status === "Completed" || task.status === "Pending" || isTaskBlocked(task)}
-          onKeep={() => keepPhoto(task.id, photo.id)}
         />
       ))}
     </SectionCard>

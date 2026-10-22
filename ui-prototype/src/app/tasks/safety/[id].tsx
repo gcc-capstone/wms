@@ -11,7 +11,7 @@ import { sharedStyles, theme } from "../../../theme/orbital-theme";
 export default function SafetyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const returnToTask = useSmoothReturn(`/tasks/${Number(id)}`);
-  const { tasks, updateSafety, keepPhoto, saveSafety, submitSafety } = useTasks();
+  const { tasks, updateSafety, saveSafety, submitSafety } = useTasks();
   const task = tasks.find((entry) => entry.id === Number(id));
   const [error, setError] = useState("");
   const safety = task?.safety;
@@ -94,9 +94,10 @@ export default function SafetyScreen() {
           ))}
           <EvidencePhotoCard
             photo={safety.photo}
+            taskId={task.id}
+            safety
             showMissing={!!error}
             readOnly={readOnly}
-            onKeep={() => keepPhoto(task.id, "hazard", true)}
           />
           <Pressable
             accessibilityRole="checkbox"
