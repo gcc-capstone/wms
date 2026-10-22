@@ -294,3 +294,41 @@ test("offline walkthrough submits as Pending even if a previous session restored
   assert.equal(taskCategory(pending), "My Tasks");
   assert.equal(uploadPendingTask(pending).status, "Completed");
 });
+
+
+test("status filters combine with search in My Tasks and do not hide Completed tasks", () => {
+  const pending = completeTask(attachAll(answer(scenario("offline"), {
+    inspected: "Yes", pressure: "62 PSI", condition: "Good",
+  })));
+  const entries = tasks.map((task) => task.id === pending.id ? pending : task);
+  for (const status of ["Available", "Current", "Pending"]) {
+    const filtered = filterTasks(entries, "My Tasks", "", [status]);
+    assert.ok(filtered.length > 0);
+    assert.ok(filtered.every((task) => taskDisplayStatus(task) === status));
+  }
+  const combined = filterTasks(entries, "My Tasks", "", ["Current", "Pending"]);
+  assert.ok(combined.every((task) => ["Current", "Pending"].includes(taskDisplayStatus(task))));
+  assert.deepEqual(filterTasks(entries, "My Tasks", "pressure sensor", ["Pending"]), [pending]);
+  assert.deepEqual(filterTasks(entries, "My Tasks", "pressure sensor", ["Available"]), []);
+  assert.deepEqual(filterTasks(entries, "My Tasks", "", []), filterTasks(entries, "My Tasks", ""));
+  assert.deepEqual(filterTasks(entries, "Completed", "", ["Current"]), filterTasks(entries, "Completed", ""));
+});
+
+
+test("task lists sort by due date across month and year formats without changing source order", () => {
+  const base = scenario("validation");
+  const entries = [
+    { ...base, id: 1, dueDate: "Oct 3, 2026" },
+    { ...base, id: 2, dueDate: "April 22" },
+    { ...base, id: 3, dueDate: "Dec 31, 2025" },
+    { ...base, id: 4, dueDate: "April 20" },
+    { ...base, id: 5, dueDate: "April 20" },
+    { ...base, id: 6, dueDate: "Date unavailable" },
+  ];
+  const original = structuredClone(entries);
+  assert.deepEqual(filterTasks(entries, "My Tasks", "").map((task) => task.id), [3, 4, 5, 2, 1, 6]);
+  assert.deepEqual(entries, original);
+  const completed = entries.map((task) => ({ ...task, status: "Completed" }));
+  assert.deepEqual(filterTasks(completed, "Completed", "").map((task) => task.id), [3, 4, 5, 2, 1, 6]);
+  assert.deepEqual(filterTasks(entries, "My Tasks", "replace fuse", ["Available"]).map((task) => task.id), [3, 4, 5, 2, 1, 6]);
+});

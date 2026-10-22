@@ -232,8 +232,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
             <TaskAttachments attachments={task.attachments} readOnly={readOnly} />
           )}
 
-          {!blocked && (
-            <View style={styles.submitArea}>
+          <View style={styles.submitArea}>
               {!!submitError && (
                 <Text accessibilityRole="alert" style={styles.submitError}>
                   {submitError}
@@ -241,10 +240,10 @@ function TaskDetail({ task }: { task: Task | undefined }) {
               )}
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ disabled: submitted || submitting, busy: submitting }}
+                accessibilityState={{ disabled: readOnly || submitting, busy: submitting }}
                 accessibilityLabel={submitting ? "Submitting task" : undefined}
-                disabled={submitted || submitting}
-                style={[sharedStyles.primaryButton, sharedStyles.submitButton, submitted && !submitting && styles.submittedButton]}
+                disabled={readOnly || submitting}
+                style={[sharedStyles.primaryButton, sharedStyles.submitButton, readOnly && !submitting && styles.submittedButton]}
                 onPress={() => {
                   const result = submitTask(task.id);
                   if (result.success) {
@@ -257,13 +256,12 @@ function TaskDetail({ task }: { task: Task | undefined }) {
                 {submitting ? (
                   <ActivityIndicator color={theme.colors.white} size="small" />
                 ) : (
-                  <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText, submitted && styles.submittedButtonText]}>
+                  <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText, readOnly && styles.submittedButtonText]}>
                     {pending ? "Submission Pending" : completed ? `Submitted on ${formatSubmissionDate(task.completedDate)}` : "Submit"}
                   </Text>
                 )}
               </Pressable>
-            </View>
-          )}
+          </View>
         </ScrollView>
       </View>
       {showSuccess && (

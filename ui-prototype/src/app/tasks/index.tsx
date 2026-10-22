@@ -1,10 +1,11 @@
 import { router, useFocusEffect } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
   Image,
+  Modal,
   PanResponder,
   Pressable,
   ScrollView,
@@ -21,6 +22,8 @@ import {
   taskCategories,
   TaskCategory,
   taskDisplayStatus,
+  taskStatusFilters,
+  TaskStatusFilter,
 } from "../../constants/task-list";
 import { useTasks } from "../../hooks/use-tasks";
 import { statusColors, TaskStatusBadge } from "../../components/task-status-badge";
@@ -41,6 +44,10 @@ export default function TaskListScreen() {
   }, [draftSavedPending, acknowledgeDraftSaved]));
   const { width } = useWindowDimensions();
   const [searchText, setSearchText] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterButtonRef = useRef<View>(null);
+  const [filterAnchor, setFilterAnchor] = useState({ right: 20, top: 0 });
+  const [statusFilters, setStatusFilters] = useState<TaskStatusFilter[]>([]);
   const [category, setCategory] = useState<TaskCategory>("My Tasks");
   const categorySwipe = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponderCapture: (_, gesture) =>
@@ -54,8 +61,8 @@ export default function TaskListScreen() {
     },
   }), []);
   const filteredTasks = useMemo(
-    () => filterTasks(tasks, category, searchText),
-    [tasks, category, searchText],
+    () => filterTasks(tasks, category, searchText, statusFilters),
+    [tasks, category, searchText, statusFilters],
   );
 
   return (
@@ -97,14 +104,38 @@ export default function TaskListScreen() {
           >
 
             <View style={styles.searchSection}>
+              <View style={styles.searchRow}>
               <TextInput
                 accessibilityLabel="Search tasks"
                 value={searchText}
                 onChangeText={setSearchText}
                 placeholder="Search tasks"
                 placeholderTextColor={theme.colors.textMuted}
-                style={sharedStyles.input}
+                style={[sharedStyles.input, styles.searchInput]}
               />
+                <Pressable
+                  ref={filterButtonRef}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Filter task status${statusFilters.length ? `: ${statusFilters.join(", ")}` : ": All statuses"}`}
+                  accessibilityState={{ expanded: filterOpen && category === "My Tasks", disabled: category === "Completed" }}
+                  disabled={category === "Completed"}
+                  style={[styles.filterButton, statusFilters.length > 0 && category === "My Tasks" && styles.filterButtonActive, category === "Completed" && styles.filterButtonDisabled]}
+                  onPress={() => {
+                    filterButtonRef.current?.measureInWindow((x, y, buttonWidth, buttonHeight) => {
+                      setFilterAnchor({ right: Math.max(12, width - x - buttonWidth), top: y + buttonHeight + theme.spacing.sm });
+                      setFilterOpen(true);
+                    });
+                  }}
+                >
+                  <SymbolView
+                    name={{ ios: "line.3.horizontal.decrease", android: "filter_list", web: "filter_list" }}
+                    tintColor={theme.colors.navy}
+                    size={24}
+                    fallback={<Text style={styles.filterIconFallback}>☷</Text>}
+                  />
+                </Pressable>
+
+              </View>
 
               <View accessibilityRole="tablist" style={styles.categoryRow}>
                 {taskCategories.map((option) => (
@@ -158,6 +189,28 @@ export default function TaskListScreen() {
           </ScrollView>
         </Animated.View>
       </View>
+      <Modal transparent visible={filterOpen && category === "My Tasks"} onRequestClose={() => setFilterOpen(false)} animationType="none" statusBarTranslucent>
+        <View style={styles.filterOverlay}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close task filters" style={StyleSheet.absoluteFill} onPress={() => setFilterOpen(false)} />
+          <View style={[styles.filterPanel, { top: filterAnchor.top, right: filterAnchor.right, maxWidth: width - 24 }]}>
+            <Text style={styles.filterHeading}>Task status</Text>
+            {taskStatusFilters.map((status) => (
+              <Pressable
+                key={status}
+                accessibilityRole="checkbox"
+                accessibilityLabel={status}
+                accessibilityState={{ checked: statusFilters.includes(status) }}
+                style={styles.filterOption}
+                onPress={() => setStatusFilters((previous) => previous.includes(status)
+                  ? previous.filter((entry) => entry !== status)
+                  : [...previous, status])}
+              >
+                <Text style={styles.filterText}>{statusFilters.includes(status) ? "☑" : "☐"} {status}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Modal>
       {toast && <TopToast key={toast.sequence} message={toast.message} />}
     </View>
   );
@@ -188,7 +241,18 @@ const styles = StyleSheet.create({
   },
   pageWide: { padding: 32, paddingTop: theme.spacing.lg, paddingBottom: 48 },
 
-  searchSection: { gap: theme.spacing.sm },
+  searchSection: { gap: theme.spacing.sm, zIndex: 10 },
+  searchRow: { flexDirection: "row", gap: theme.spacing.sm, alignItems: "center", zIndex: 1 },
+  searchInput: { flex: 1, minWidth: 0 },
+  filterButton: { width: 46, height: 46, borderRadius: theme.radius.md, justifyContent: "center", alignItems: "center" },
+  filterIconFallback: { color: theme.colors.navy, fontSize: 24 },
+  filterButtonActive: { backgroundColor: theme.colors.current, borderColor: theme.colors.navy },
+  filterButtonDisabled: { opacity: 0.5 },
+  filterHeading: { color: theme.colors.ink, fontSize: 18, fontWeight: "700", marginBottom: theme.spacing.sm },
+  filterText: { color: theme.colors.navy, fontSize: 18, fontWeight: "600" },
+  filterOverlay: { flex: 1 },
+  filterPanel: { position: "absolute", width: 300, zIndex: 20, elevation: 8, padding: theme.spacing.xl, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, backgroundColor: theme.colors.white },
+  filterOption: { minHeight: 56, justifyContent: "center" },
   categoryContent: { flexGrow: 1, gap: theme.spacing.md },
   categoryRow: { flexDirection: "row" },
   categoryTab: {
