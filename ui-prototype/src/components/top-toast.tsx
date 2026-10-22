@@ -3,7 +3,7 @@ import { Animated, StyleSheet, Text } from "react-native";
 
 import { theme } from "../theme/orbital-theme";
 
-export function DraftSavedToast() {
+export function TopToast({ message }: { message: string }) {
   const [visible, setVisible] = useState(true);
   const offset = useRef(new Animated.Value(-140)).current;
 
@@ -21,7 +21,7 @@ export function DraftSavedToast() {
 
   return (
     <Animated.View pointerEvents="none" style={[styles.container, { transform: [{ translateY: offset }] }]}>
-      <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.message}>Draft Saved</Text>
+      <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.message}>{message}</Text>
     </Animated.View>
   );
 }
