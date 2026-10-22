@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -41,6 +42,17 @@ export default function TaskListScreen() {
   const { width } = useWindowDimensions();
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState<TaskCategory>("My Tasks");
+  const categorySwipe = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_, gesture) =>
+      Math.abs(gesture.dx) > 20 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
+    onPanResponderRelease: (_, gesture) => {
+      if (Math.abs(gesture.dx) < 60 || Math.abs(gesture.dx) <= Math.abs(gesture.dy) * 1.5) return;
+      setCategory((previous) => {
+        const nextIndex = taskCategories.indexOf(previous) + (gesture.dx < 0 ? 1 : -1);
+        return taskCategories[Math.max(0, Math.min(taskCategories.length - 1, nextIndex))];
+      });
+    },
+  }), []);
   const filteredTasks = useMemo(
     () => filterTasks(tasks, category, searchText),
     [tasks, category, searchText],
@@ -111,35 +123,37 @@ export default function TaskListScreen() {
               </View>
             </View>
 
-            <Text style={styles.resultCount}>
-              {filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
-            </Text>
-            <View style={styles.taskList}>
-              {filteredTasks.map((task) => (
-                <Pressable
-                  key={task.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${task.title}`}
-                  style={styles.taskCard}
-                  onPress={() => router.push(`/tasks/${task.id}`)}
-                >
-                  <View style={[styles.taskCardAccent, { backgroundColor: statusColors[taskDisplayStatus(task)].accent }]} />
-                  <View style={styles.taskMain}>
-                    <Text style={styles.taskTitle}>{task.title}</Text>
-                    <Text style={styles.dueDate}>Due {task.dueDate}</Text>
+            <View style={styles.categoryContent} {...categorySwipe.panHandlers}>
+              <Text style={styles.resultCount}>
+                {filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
+              </Text>
+              <View style={styles.taskList}>
+                {filteredTasks.map((task) => (
+                  <Pressable
+                    key={task.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${task.title}`}
+                    style={styles.taskCard}
+                    onPress={() => router.push(`/tasks/${task.id}`)}
+                  >
+                    <View style={[styles.taskCardAccent, { backgroundColor: statusColors[taskDisplayStatus(task)].accent }]} />
+                    <View style={styles.taskMain}>
+                      <Text style={styles.taskTitle}>{task.title}</Text>
+                      <Text style={styles.dueDate}>Due {task.dueDate}</Text>
+                    </View>
+                    <TaskStatusBadge status={taskDisplayStatus(task)} />
+                    <Text style={styles.chevron}>›</Text>
+                  </Pressable>
+                ))}
+                {filteredTasks.length === 0 && (
+                  <View style={styles.emptyState}>
+                    <Text style={sharedStyles.heading2}>No tasks found</Text>
+                    <Text style={styles.helperText}>
+                      Try another search or task tab.
+                    </Text>
                   </View>
-                  <TaskStatusBadge status={taskDisplayStatus(task)} />
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-              ))}
-              {filteredTasks.length === 0 && (
-                <View style={styles.emptyState}>
-                  <Text style={sharedStyles.heading2}>No tasks found</Text>
-                  <Text style={styles.helperText}>
-                    Try another search or task tab.
-                  </Text>
-                </View>
-              )}
+                )}
+              </View>
             </View>
           </ScrollView>
         </Animated.View>
@@ -163,6 +177,7 @@ const styles = StyleSheet.create({
   },
   settingsFallback: { color: theme.colors.white, fontSize: 20 },
   page: {
+    flexGrow: 1,
     width: "100%",
     maxWidth: 1180,
     alignSelf: "center",
@@ -174,6 +189,7 @@ const styles = StyleSheet.create({
   pageWide: { padding: 32, paddingTop: theme.spacing.lg, paddingBottom: 48 },
 
   searchSection: { gap: theme.spacing.sm },
+  categoryContent: { flexGrow: 1, gap: theme.spacing.md },
   categoryRow: { flexDirection: "row" },
   categoryTab: {
     flex: 1,
