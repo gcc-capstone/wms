@@ -31,7 +31,7 @@ export default function TaskListScreen() {
   const onRefresh = useCallback(() => {
     setToast((previous) => ({ message: "Task List Refreshed", sequence: (previous?.sequence ?? 0) + 1 }));
   }, []);
-  const { offset, dragging, refreshing, refresh, panHandlers, setScrollTop } = usePullToRefresh(onRefresh);
+  const { offset, dragging, refreshing, panHandlers, setScrollTop } = usePullToRefresh(onRefresh);
   useFocusEffect(useCallback(() => {
     if (!draftSavedPending) return;
     setToast((previous) => ({ message: "Draft Saved", sequence: (previous?.sequence ?? 0) + 1 }));
@@ -82,48 +82,32 @@ export default function TaskListScreen() {
             bounces={false}
             overScrollMode="never"
           >
-            <View style={styles.titleRow}>
-              <Text style={sharedStyles.heading1}>My Tasks</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Refresh tasks"
-                style={styles.iconButton}
-                accessibilityState={{ disabled: refreshing, busy: refreshing }}
-                disabled={refreshing}
-                onPress={() => refresh()}
-              >
-                {refreshing ? <ActivityIndicator color={theme.colors.navy} size="small" /> : <SymbolView
-                  name={{ ios: "arrow.clockwise", android: "refresh", web: "refresh" }}
-                  tintColor={theme.colors.navy}
-                  size={24}
-                  fallback={<Text style={styles.refreshFallback}>↻</Text>}
-                />}
-              </Pressable>
-            </View>
 
-            <TextInput
-              accessibilityLabel="Search tasks"
-              value={searchText}
-              onChangeText={setSearchText}
-              placeholder="Search tasks"
-              placeholderTextColor={theme.colors.textMuted}
-              style={sharedStyles.input}
-            />
+            <View style={styles.searchSection}>
+              <TextInput
+                accessibilityLabel="Search tasks"
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholder="Search tasks"
+                placeholderTextColor={theme.colors.textMuted}
+                style={sharedStyles.input}
+              />
 
-            <View accessibilityRole="tablist" style={styles.categoryRow}>
-              {taskCategories.map((option) => (
-                <Pressable
-                  key={option}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: option === category }}
-                  style={[styles.categoryTab, option === category && styles.categoryTabSelected]}
-                  onPress={() => setCategory(option)}
-                >
-                  <Text style={[styles.categoryText, option === category && styles.categoryTextSelected]}>
-                    {option}
-                  </Text>
-                </Pressable>
-              ))}
+              <View accessibilityRole="tablist" style={styles.categoryRow}>
+                {taskCategories.map((option) => (
+                  <Pressable
+                    key={option}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: option === category }}
+                    style={[styles.categoryTab, option === category && styles.categoryTabSelected]}
+                    onPress={() => setCategory(option)}
+                  >
+                    <Text style={[styles.categoryText, option === category && styles.categoryTextSelected]}>
+                      {option}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             {category === "Current" && (
@@ -182,22 +166,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   settingsFallback: { color: theme.colors.white, fontSize: 20 },
-  refreshFallback: { color: theme.colors.navy, fontSize: 28 },
   page: {
     width: "100%",
     maxWidth: 1180,
     alignSelf: "center",
     padding: theme.spacing.xl,
+    paddingTop: theme.spacing.lg,
     paddingBottom: 40,
     gap: theme.spacing.md,
   },
-  pageWide: { padding: 32, paddingBottom: 48 },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: theme.spacing.sm,
-  },
+  pageWide: { padding: 32, paddingTop: theme.spacing.lg, paddingBottom: 48 },
+
+  searchSection: { gap: theme.spacing.sm },
   categoryRow: { flexDirection: "row" },
   categoryTab: {
     flex: 1,
