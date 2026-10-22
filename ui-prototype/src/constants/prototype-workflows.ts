@@ -6,7 +6,7 @@ export function unlockTaskDependencies(tasks: Task[]): Task[] {
   return tasks.map((task) => {
     if (!isTaskBlocked(task) || task.prerequisiteTaskId === undefined) return task;
     const prerequisite = tasks.find((entry) => entry.id === task.prerequisiteTaskId);
-    return prerequisite?.status === "Pending" || prerequisite?.status === "Completed"
+    return prerequisite?.status === "Pending" || prerequisite?.status === "Completed" || prerequisite?.status === "Error"
       ? { ...task, status: "Not Started" }
       : task;
   });
@@ -24,7 +24,7 @@ export function missingTaskRequirements(task: Task): string[] {
 export function completeTask(task: Task): Task {
   const missing = missingTaskRequirements(task);
   if (missing.length) throw new Error(`Required information missing: ${missing.join("; ")}`);
-  if (task.status === "Completed" || task.status === "Pending") throw new Error("This task has already been submitted.");
+  if (task.status === "Completed" || task.status === "Pending" || task.status === "Error") throw new Error("This task has already been submitted.");
   const pending = task.scenario === "offline" || task.scenario === "uploadFailure";
   const received = task.scenario === "validation" || task.scenario === "safety";
   return {
@@ -85,7 +85,7 @@ export function missingSafetyRequirements(safety: SafetyChecklist): string[] {
 }
 
 export function startSync(task: Task, retry = false): Task {
-  if (task.status !== "Completed") throw new Error("Complete the task before synchronizing.");
+  if (task.status !== "Completed" && !(retry && task.status === "Error")) throw new Error("Complete the task before synchronizing.");
   if (retry ? task.syncStatus !== "Upload failed" : task.syncStatus !== "Unsynced") {
     throw new Error("Synchronization cannot begin from the current state.");
   }
@@ -106,6 +106,9 @@ export function finishSync(task: Task): Task {
   const failRepair = task.scenario === "uploadFailure" && task.syncAttempt === "initial";
   return {
     ...task,
+    status: failRepair ? "Error" : "Completed",
+    completedBy: failRepair ? null : task.technician ?? "Alex Rivera",
+    completedDate: failRepair ? null : task.completedDate ?? task.dueDate,
     syncStatus: failRepair ? "Upload failed" : "Up to date",
     photos: task.photos?.map((photo) => ({
       ...photo,

@@ -45,7 +45,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   const markDraftChanged = (id: number) => {
     const task = tasks.find((entry) => entry.id === id);
-    if (task && task.status !== "Completed" && task.status !== "Pending" && !isTaskBlocked(task)) {
+    if (task && task.status !== "Completed" && task.status !== "Pending" && task.status !== "Error" && !isTaskBlocked(task)) {
       setDraftSavedPending(true);
     }
   };
@@ -61,7 +61,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     markDraftChanged(id);
     changeTask(id, (task) => {
       if (isTaskBlocked(task)) throw new Error("A prerequisite task must be completed first.");
-      return task.status === "Completed" || task.status === "Pending" ? task : { ...task, checklist };
+      return task.status === "Completed" || task.status === "Pending" || task.status === "Error" ? task : { ...task, checklist };
     });
   };
 
@@ -74,7 +74,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         if (task.safety.status === "Submitted") return task;
         return { ...task, safety: { ...task.safety, saved: false, photo: { ...task.safety.photo, attached: true } } };
       }
-      if (task.status === "Completed" || task.status === "Pending") return task;
+      if (task.status === "Completed" || task.status === "Pending" || task.status === "Error") return task;
       return { ...task, photos: task.photos?.map((photo) => photo.id === photoId ? { ...photo, attached: true } : photo) };
     });
   };
@@ -87,7 +87,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         error: "Task not found. Return to the task list and try again.",
       };
     }
-    if (task.status === "Completed" || task.status === "Pending") {
+    if (task.status === "Completed" || task.status === "Pending" || task.status === "Error") {
       return { success: false, error: "This task has already been submitted." };
     }
     const missing = missingTaskRequirements(task);
@@ -142,7 +142,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
-  const beginSync = (id: number, retry = false) => changeTask(id, (task) => startSync(task, retry));
+  const beginSync = (id: number, retry = false) => changeTask(id, (task) => retry ? finishSync(startSync(task, true)) : startSync(task));
   const endSync = (id: number) => changeTask(id, finishSync);
   const uploadPending = (id: number) => changeTask(id, (task) =>
     task.status === "Pending" ? uploadPendingTask(task) : task,

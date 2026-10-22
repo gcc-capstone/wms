@@ -4,7 +4,7 @@
 */
 import { representativeTasks } from "./representative-tasks";
 
-export type TaskStatus = "Current" | "Upcoming" | "In Progress" | "Not Started" | "Pending" | "Completed";
+export type TaskStatus = "Current" | "Upcoming" | "In Progress" | "Not Started" | "Pending" | "Error" | "Completed";
 export type Priority = "High" | "Normal" | "Medium" | "Low";
 export type SyncStatus = "Unsynced" | "Up to date" | "Synchronizing" | "Upload failed";
 export type Scenario = "validation" | "safety" | "offline" | "uploadFailure";

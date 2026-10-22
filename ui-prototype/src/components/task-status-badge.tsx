@@ -7,6 +7,7 @@ export const statusColors: Record<TaskDisplayStatus, { backgroundColor: string; 
   Current: { backgroundColor: theme.colors.current, color: theme.colors.ink, accent: theme.colors.currentAccent },
   Available: { backgroundColor: theme.colors.available, color: theme.colors.ink, accent: theme.colors.availableAccent },
   Completed: { backgroundColor: theme.colors.completed, color: theme.colors.ink, accent: theme.colors.completedAccent },
+  Error: { backgroundColor: theme.colors.error, color: theme.colors.errorAccent, accent: theme.colors.errorAccent },
   Pending: { backgroundColor: theme.colors.pending, color: theme.colors.ink, accent: theme.colors.pendingAccent },
 };
 

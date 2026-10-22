@@ -23,7 +23,7 @@ export default function PhotoReviewScreen() {
     : task?.photos?.find((entry) => entry.id === photoId);
   const readOnly = !task || isTaskBlocked(task) || (isSafety
     ? task.safety?.status === "Submitted"
-    : task.status === "Completed" || task.status === "Pending");
+    : task.status === "Completed" || task.status === "Pending" || task.status === "Error");
 
   return (
     <>

@@ -163,9 +163,12 @@ test("Daniel partial photo failure retries only the failed upload", () => {
   assert.ok(pending.photos.every((photo) => photo.upload === "Saved on device"));
   assert.throws(() => completeTask(pending), /already been submitted/);
   const failed = uploadPendingTask(pending);
-  assert.equal(failed.status, "Completed");
-  assert.equal(taskCategory(failed), "Completed");
-  assert.equal(failed.completedDate, "April 23");
+  assert.equal(failed.status, "Error");
+  assert.equal(taskCategory(failed), "My Tasks");
+  assert.equal(failed.completedDate, null);
+  assert.equal(failed.completedBy, null);
+  assert.equal(taskDisplayStatus(failed), "Error");
+  assert.throws(() => completeTask(failed), /already been submitted/);
   assert.deepEqual(failed.checklist, pending.checklist);
   assert.throws(() => uploadPendingTask(failed), /No submission/);
   assert.equal(failed.syncStatus, "Upload failed");
@@ -176,6 +179,10 @@ test("Daniel partial photo failure retries only the failed upload", () => {
   assert.equal(retry.photos[0].upload, "Received by WMS");
   assert.equal(retry.photos[1].upload, "Uploading");
   const synced = finishSync(retry);
+  assert.equal(synced.status, "Completed");
+  assert.equal(synced.completedDate, "April 23");
+  assert.equal(synced.completedBy, "Daniel Brooks");
+  assert.equal(taskCategory(synced), "Completed");
   assert.equal(synced.syncStatus, "Up to date");
   assert.ok(synced.photos.every((photo) => photo.upload === "Received by WMS"));
 });
@@ -214,6 +221,7 @@ test("My Tasks combines Current, Available, and Pending with distinct display st
     "Not Started": "Available",
     Upcoming: "Current",
     Pending: "Pending",
+    Error: "Error",
     Completed: "Completed",
   };
   for (const [status, displayStatus] of Object.entries(expected)) {
@@ -372,4 +380,17 @@ test("unsubmitted or missing prerequisites leave Current tasks locked", () => {
   assert.equal(isTaskBlocked(unlockTaskDependencies(initial.filter((task) => task.id !== 104)).find((task) => task.id === 3)), true);
   const completedPrerequisite = initial.map((task) => task.id === 104 ? { ...task, status: "Completed" } : task);
   assert.equal(taskDisplayStatus(unlockTaskDependencies(completedPrerequisite).find((task) => task.id === 3)), "Available");
+});
+
+
+test("Error tasks sort first in My Tasks, with date order within each group", () => {
+  const entries = [
+    { ...tasks[0], id: 701, status: "Not Started", dueDate: "April 1" },
+    { ...tasks[0], id: 702, status: "Error", dueDate: "April 23" },
+    { ...tasks[0], id: 703, status: "Pending", dueDate: "April 2" },
+    { ...tasks[0], id: 704, status: "Error", dueDate: "April 20" },
+  ];
+  assert.deepEqual(filterTasks(entries, "My Tasks", "").map((task) => task.id), [704, 702, 701, 703]);
+  assert.deepEqual(filterTasks(entries, "My Tasks", "", ["Error"]).map((task) => task.id), [704, 702]);
+  assert.deepEqual(filterTasks(entries, "Completed", ""), []);
 });

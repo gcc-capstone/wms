@@ -24,6 +24,8 @@ export const theme = {
     pending: "#F4E1A8",
     current: "#D5E5F0",
     completed: "#E9EDF0",
+    error: "#F8D7DA",
+    errorAccent: "#B3261E",
     availableAccent: "#719653",
     pendingAccent: "#B38B2F",
     currentAccent: "#598CAB",

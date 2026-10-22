@@ -101,7 +101,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   }
 
   const setResponse = (itemId: string, response: ChecklistResponse) => {
-    if (task.status === "Completed" || task.status === "Pending" || isTaskBlocked(task)) return;
+    if (task.status === "Completed" || task.status === "Pending" || task.status === "Error" || isTaskBlocked(task)) return;
     updateChecklist(task.id,
       task.checklist.map((item) =>
         item.id === itemId
@@ -121,7 +121,8 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   const answeredCount = checklist.filter(isChecklistItemAnswered).length;
   const completed = task.status === "Completed";
   const pending = task.status === "Pending";
-  const submitted = completed || pending;
+  const failed = task.status === "Error";
+  const submitted = completed || pending || failed;
   const blocked = isTaskBlocked(task);
   const prerequisite = tasks.find((entry) => entry.id === task.prerequisiteTaskId);
   const readOnly = submitted || blocked;
@@ -264,7 +265,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
                   <ActivityIndicator color={theme.colors.white} size="small" />
                 ) : (
                   <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText, readOnly && styles.submittedButtonText]}>
-                    {pending ? "Submission Pending" : completed ? `Submitted on ${formatSubmissionDate(task.completedDate)}` : "Submit"}
+                    {failed ? "Photo Upload Failed" : pending ? "Submission Pending" : completed ? `Submitted on ${formatSubmissionDate(task.completedDate)}` : "Submit"}
                   </Text>
                 )}
               </Pressable>
@@ -468,7 +469,7 @@ function TaskPhotos({ task, showMissing }: { task: Task; showMissing: boolean })
           photo={photo}
           taskId={task.id}
           showMissing={showMissing}
-          readOnly={task.status === "Completed" || task.status === "Pending" || isTaskBlocked(task)}
+          readOnly={task.status === "Completed" || task.status === "Pending" || task.status === "Error" || isTaskBlocked(task)}
         />
       ))}
     </SectionCard>

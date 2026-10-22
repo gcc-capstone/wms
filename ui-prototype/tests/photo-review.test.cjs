@@ -69,7 +69,7 @@ for (const safety of [false, true]) {
 }
 
 test("read-only tasks and submitted safety checklists cannot attach photos", () => {
-  for (const options of [{ status: "Completed" }, { status: "Pending" }, { status: "Upcoming" }, { safety: true, safetyStatus: "Submitted" }]) {
+  for (const options of [{ status: "Error" }, { status: "Completed" }, { status: "Pending" }, { status: "Upcoming" }, { safety: true, safetyStatus: "Submitted" }]) {
     const review = renderReview(options);
     assert.equal(review.button("Use Photo").props.disabled, true);
     review.button("Use Photo").props.onPress();
