@@ -29,6 +29,7 @@ const {
   startSync,
   finishSync,
   uploadPendingTask,
+  unlockTaskDependencies,
 } = require("../src/constants/prototype-workflows.ts");
 
 function scenario(name) {
@@ -331,4 +332,44 @@ test("task lists sort by due date across month and year formats without changing
   const completed = entries.map((task) => ({ ...task, status: "Completed" }));
   assert.deepEqual(filterTasks(completed, "Completed", "").map((task) => task.id), [3, 4, 5, 2, 1, 6]);
   assert.deepEqual(filterTasks(entries, "My Tasks", "replace fuse", ["Available"]).map((task) => task.id), [3, 4, 5, 2, 1, 6]);
+});
+
+
+test("linked Current tasks unlock when their own prerequisite becomes Pending", () => {
+  let entries = structuredClone(tasks);
+  const pairs = [
+    [104, 3, { inspected: "Yes", condition: "Good", note: "Repair inspected" }],
+    [103, 4, { inspected: "Yes", condition: "Good", pressure: "62 PSI" }],
+  ];
+  for (const [prerequisiteId, dependentId, responses] of pairs) {
+    const dependentBefore = entries.find((task) => task.id === dependentId);
+    assert.equal(isTaskBlocked(dependentBefore), true);
+    assert.equal(dependentBefore.prerequisiteTaskId, prerequisiteId);
+    const pending = completeTask(attachAll(answer(entries.find((task) => task.id === prerequisiteId), responses)));
+    entries = unlockTaskDependencies(entries.map((task) => task.id === prerequisiteId ? pending : task));
+    const dependent = entries.find((task) => task.id === dependentId);
+    assert.equal(pending.status, "Pending");
+    assert.equal(taskDisplayStatus(dependent), "Available");
+    assert.equal(isTaskBlocked(dependent), false);
+    assert.deepEqual(dependent.checklist, dependentBefore.checklist);
+    assert.ok(!missingTaskRequirements(dependent).some((label) => label.includes("prerequisite")));
+    const ready = {
+      ...dependent,
+      checklist: dependent.checklist.map((item) => ({
+        ...item, response: item.kind === "dropdown" ? item.options[0] : "Yes", customText: "Inspection complete",
+      })),
+    };
+    assert.equal(completeTask(ready).status, "Completed");
+    entries = unlockTaskDependencies(entries.map((task) => task.id === prerequisiteId ? uploadPendingTask(pending) : task));
+    assert.equal(taskDisplayStatus(entries.find((task) => task.id === dependentId)), "Available");
+    if (dependentId === 3) assert.equal(isTaskBlocked(entries.find((task) => task.id === 4)), true);
+  }
+});
+
+test("unsubmitted or missing prerequisites leave Current tasks locked", () => {
+  const initial = structuredClone(tasks);
+  assert.equal(isTaskBlocked(unlockTaskDependencies(initial).find((task) => task.id === 3)), true);
+  assert.equal(isTaskBlocked(unlockTaskDependencies(initial.filter((task) => task.id !== 104)).find((task) => task.id === 3)), true);
+  const completedPrerequisite = initial.map((task) => task.id === 104 ? { ...task, status: "Completed" } : task);
+  assert.equal(taskDisplayStatus(unlockTaskDependencies(completedPrerequisite).find((task) => task.id === 3)), "Available");
 });

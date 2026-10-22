@@ -15,6 +15,7 @@ import {
   newSafetyChecklist,
   startSync,
   uploadPendingTask,
+  unlockTaskDependencies,
 } from "../constants/prototype-workflows";
 import { isTaskBlocked } from "../constants/task-list";
 
@@ -38,7 +39,7 @@ type TaskStore = {
 const TaskContext = createContext<TaskStore | null>(null);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState(() => unlockTaskDependencies(initialTasks));
   const [draftSavedPending, setDraftSavedPending] = useState(false);
   const acknowledgeDraftSaved = useCallback(() => setDraftSavedPending(false), []);
 
@@ -52,7 +53,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const changeTask = (id: number, update: (task: Task) => Task) => {
     setTasks((previous) => {
       if (!previous.some((task) => task.id === id)) throw new Error("Task not found.");
-      return previous.map((task) => task.id === id ? update(task) : task);
+      return unlockTaskDependencies(previous.map((task) => task.id === id ? update(task) : task));
     });
   };
 

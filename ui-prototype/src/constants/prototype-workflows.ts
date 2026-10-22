@@ -2,6 +2,16 @@ import { isChecklistItemAnswered, SafetyChecklist, Task } from "./tasks";
 import { createPhoto } from "./representative-tasks";
 import { isTaskBlocked } from "./task-list";
 
+export function unlockTaskDependencies(tasks: Task[]): Task[] {
+  return tasks.map((task) => {
+    if (!isTaskBlocked(task) || task.prerequisiteTaskId === undefined) return task;
+    const prerequisite = tasks.find((entry) => entry.id === task.prerequisiteTaskId);
+    return prerequisite?.status === "Pending" || prerequisite?.status === "Completed"
+      ? { ...task, status: "Not Started" }
+      : task;
+  });
+}
+
 export function missingTaskRequirements(task: Task): string[] {
   return [
     ...(isTaskBlocked(task) ? ["A prerequisite task must be completed first."] : []),

@@ -40,7 +40,7 @@ export default function TaskDetailScreen() {
 }
 
 function TaskDetail({ task }: { task: Task | undefined }) {
-  const { submitTask, updateChecklist, createSafety, uploadPending } = useTasks();
+  const { tasks, submitTask, updateChecklist, createSafety, uploadPending } = useTasks();
   const [submitError, setSubmitError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState("");
@@ -125,6 +125,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   const pending = task.status === "Pending";
   const submitted = completed || pending;
   const blocked = isTaskBlocked(task);
+  const prerequisite = tasks.find((entry) => entry.id === task.prerequisiteTaskId);
   const readOnly = submitted || blocked;
 
   const setCustomText = (itemId: string, text: string) => {
@@ -186,13 +187,21 @@ function TaskDetail({ task }: { task: Task | undefined }) {
           <TaskInformation task={task} />
 
           {blocked && (
-            <View style={styles.submissionNotice}>
-              <Text style={sharedStyles.heading2}>Waiting for prerequisite</Text>
-              <Text style={sharedStyles.body}>
-                A previous task must be completed before you can work on this task.
-                You can review its information, checklist, and attachments below.
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={prerequisite ? `Open prerequisite task: ${prerequisite.title}` : "Waiting for prerequisite"}
+              accessibilityState={{ disabled: !prerequisite }}
+              disabled={!prerequisite}
+              style={styles.submissionNotice}
+              onPress={() => {
+                if (prerequisite) router.push(`/tasks/${prerequisite.id}`);
+              }}
+            >
+              <Text style={[sharedStyles.heading2, styles.prerequisiteTitle]}>
+                {prerequisite ? `Waiting on task: ${prerequisite.title}` : "Waiting for prerequisite"}
               </Text>
-            </View>
+              {prerequisite && <Text accessible={false} style={styles.prerequisiteArrow}>→</Text>}
+            </Pressable>
           )}
 
           <TaskSyncPanel task={task} />
@@ -868,7 +877,11 @@ const styles = StyleSheet.create({
     ...sharedStyles.card,
     backgroundColor: theme.colors.mist,
     gap: theme.spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
   },
+  prerequisiteTitle: { flex: 1 },
+  prerequisiteArrow: { color: theme.colors.navy, fontSize: 28 },
   submittedButton: { backgroundColor: "#C8CDD2" },
   connectionIcon: { minWidth: 40, minHeight: 40, alignItems: "center", justifyContent: "center" },
   connectionFallback: { color: theme.colors.white, fontSize: 28 },

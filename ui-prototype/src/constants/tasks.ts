@@ -79,6 +79,7 @@ export type Task = {
   checklist: ChecklistItem[];
   attachments: Attachment[];
   scenario?: Scenario;
+  prerequisiteTaskId?: number;
   technician?: string;
   location?: string;
   photos?: EvidencePhoto[];
@@ -178,6 +179,7 @@ export const tasks: Task[] = [
   {
     id: 3,
     title: "Transformer Location Review",
+    prerequisiteTaskId: 104,
     dueDate: "Oct 12, 2026",
     status: "Upcoming",
     description:
@@ -207,6 +209,7 @@ export const tasks: Task[] = [
   {
     id: 4,
     title: "Right-of-Way Photo Survey",
+    prerequisiteTaskId: 103,
     dueDate: "Oct 18, 2026",
     status: "Upcoming",
     description:
