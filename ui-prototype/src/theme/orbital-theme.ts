@@ -20,6 +20,7 @@ export const theme = {
     // Brand-inspired colors
     navy: "#284765",
     gold: "#B1945D",
+    pending: "#F4D675",
 
     // Neutral UI colors
     ink: "#1F2933",

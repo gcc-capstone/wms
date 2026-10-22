@@ -9,6 +9,7 @@ const statusColors: Record<TaskStatus, { backgroundColor: string; color: string 
   Upcoming: { backgroundColor: theme.colors.gold, color: theme.colors.ink },
   "Not Started": { backgroundColor: theme.colors.gold, color: theme.colors.ink },
   Completed: { backgroundColor: theme.colors.mist, color: theme.colors.ink },
+  Pending: { backgroundColor: theme.colors.pending, color: theme.colors.ink },
 };
 
 export function TaskStatusBadge({ status }: { status: TaskStatus }) {

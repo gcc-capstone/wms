@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -38,9 +39,10 @@ export default function TaskDetailScreen() {
 }
 
 function TaskDetail({ task }: { task: Task | undefined }) {
-  const { submitTask, updateChecklist, createSafety } = useTasks();
+  const { submitTask, updateChecklist, createSafety, uploadPending } = useTasks();
   const [submitError, setSubmitError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const toastOffset = useRef(new Animated.Value(-140)).current;
 
@@ -100,7 +102,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   }
 
   const setResponse = (itemId: string, response: ChecklistResponse) => {
-    if (task.status === "Completed" || isTaskBlocked(task)) return;
+    if (task.status === "Completed" || task.status === "Pending" || isTaskBlocked(task)) return;
     updateChecklist(task.id,
       task.checklist.map((item) =>
         item.id === itemId
@@ -119,8 +121,10 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   const checklist = task.checklist;
   const answeredCount = checklist.filter(isChecklistItemAnswered).length;
   const completed = task.status === "Completed";
+  const pending = task.status === "Pending";
+  const submitted = completed || pending;
   const blocked = isTaskBlocked(task);
-  const readOnly = completed || blocked;
+  const readOnly = submitted || blocked;
 
   const setCustomText = (itemId: string, text: string) => {
     if (readOnly) return;
@@ -140,6 +144,29 @@ function TaskDetail({ task }: { task: Task | undefined }) {
         >
           <Text style={styles.backButtonText}>‹ Tasks</Text>
         </Pressable>
+        {(task.scenario === "offline" || task.scenario === "uploadFailure") && (!submitted || submitting) && (
+          <View accessible accessibilityRole="image" accessibilityLabel="No connection" style={styles.connectionIcon}>
+            <SymbolView
+              name={{ ios: "wifi.slash", android: "signal_wifi_off", web: "signal_wifi_off" }}
+              tintColor={theme.colors.white}
+              size={26}
+              fallback={<Text style={styles.connectionFallback}>⊘</Text>}
+            />
+          </View>
+        )}
+        {pending && !submitting && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Upload Pending: Simulate connection returning at ${task.scenario === "uploadFailure" ? "4:10 PM" : "3:35 PM"}`}
+            style={styles.uploadPending}
+            onPress={() => {
+              setShowSuccess(false);
+              uploadPending(task.id);
+            }}
+          >
+            <Text style={styles.uploadPendingText}>Upload Pending</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.body} {...panResponder.panHandlers}>
@@ -210,21 +237,24 @@ function TaskDetail({ task }: { task: Task | undefined }) {
               )}
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ disabled: completed || submitting, busy: submitting }}
+                accessibilityState={{ disabled: submitted || submitting, busy: submitting }}
                 accessibilityLabel={submitting ? "Submitting task" : undefined}
-                disabled={completed || submitting}
-                style={[sharedStyles.primaryButton, sharedStyles.submitButton, completed && !submitting && styles.submittedButton]}
+                disabled={submitted || submitting}
+                style={[sharedStyles.primaryButton, sharedStyles.submitButton, submitted && !submitting && styles.submittedButton]}
                 onPress={() => {
                   const result = submitTask(task.id);
-                  if (result.success) setSubmitting(true);
+                  if (result.success) {
+                    setSubmissionMessage(result.pending ? "Offline -- Submission Pending" : "Submission Successful");
+                    setSubmitting(true);
+                  }
                   setSubmitError(result.success ? "" : result.error);
                 }}
               >
                 {submitting ? (
                   <ActivityIndicator color={theme.colors.white} size="small" />
                 ) : (
-                  <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText, completed && styles.submittedButtonText]}>
-                    {completed ? `Submitted on ${formatSubmissionDate(task.completedDate)}` : "Submit"}
+                  <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText, submitted && styles.submittedButtonText]}>
+                    {pending ? "Submission Pending" : completed ? `Submitted on ${formatSubmissionDate(task.completedDate)}` : "Submit"}
                   </Text>
                 )}
               </Pressable>
@@ -235,7 +265,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
       {showSuccess && (
         <Animated.View pointerEvents="none" style={[styles.successToastContainer, { transform: [{ translateY: toastOffset }] }]}>
           <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.successToast}>
-            Submission Successful
+            {submissionMessage}
           </Text>
         </Animated.View>
       )}
@@ -429,7 +459,7 @@ function TaskPhotos({ task, showMissing }: { task: Task; showMissing: boolean })
           key={photo.id}
           photo={photo}
           showMissing={showMissing}
-          readOnly={task.status === "Completed" || isTaskBlocked(task)}
+          readOnly={task.status === "Completed" || task.status === "Pending" || isTaskBlocked(task)}
           onKeep={() => keepPhoto(task.id, photo.id)}
         />
       ))}
@@ -838,6 +868,16 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   submittedButton: { backgroundColor: "#C8CDD2" },
+  connectionIcon: { minWidth: 40, minHeight: 40, alignItems: "center", justifyContent: "center" },
+  connectionFallback: { color: theme.colors.white, fontSize: 28 },
+  uploadPending: {
+    backgroundColor: theme.colors.pending,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: theme.spacing.md,
+    minHeight: 40,
+    justifyContent: "center",
+  },
+  uploadPendingText: { color: theme.colors.ink, fontSize: 14, fontWeight: "700" },
   submittedButtonText: { color: theme.colors.textMuted },
   successToastContainer: {
     position: "absolute",

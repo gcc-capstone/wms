@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, ReactNode } from "react";
 
 import {
   ChecklistItem,
@@ -14,10 +14,11 @@ import {
   missingTaskRequirements,
   newSafetyChecklist,
   startSync,
+  uploadPendingTask,
 } from "../constants/prototype-workflows";
 import { isTaskBlocked } from "../constants/task-list";
 
-type SubmitResult = { success: true } | { success: false; error: string };
+type SubmitResult = { success: true; pending?: boolean } | { success: false; error: string };
 type TaskStore = {
   tasks: Task[];
   updateChecklist: (id: number, checklist: ChecklistItem[]) => void;
@@ -29,12 +30,24 @@ type TaskStore = {
   submitSafety: (id: number) => SubmitResult;
   beginSync: (id: number, retry?: boolean) => void;
   endSync: (id: number) => void;
+  uploadPending: (id: number) => void;
+  draftSavedPending: boolean;
+  acknowledgeDraftSaved: () => void;
 };
 
 const TaskContext = createContext<TaskStore | null>(null);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState(initialTasks);
+  const [draftSavedPending, setDraftSavedPending] = useState(false);
+  const acknowledgeDraftSaved = useCallback(() => setDraftSavedPending(false), []);
+
+  const markDraftChanged = (id: number) => {
+    const task = tasks.find((entry) => entry.id === id);
+    if (task && task.status !== "Completed" && task.status !== "Pending" && !isTaskBlocked(task)) {
+      setDraftSavedPending(true);
+    }
+  };
 
   const changeTask = (id: number, update: (task: Task) => Task) => {
     setTasks((previous) => {
@@ -44,13 +57,15 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const updateChecklist = (id: number, checklist: ChecklistItem[]) => {
+    markDraftChanged(id);
     changeTask(id, (task) => {
       if (isTaskBlocked(task)) throw new Error("A prerequisite task must be completed first.");
-      return task.status === "Completed" ? task : { ...task, checklist };
+      return task.status === "Completed" || task.status === "Pending" ? task : { ...task, checklist };
     });
   };
 
   const keepPhoto = (id: number, photoId: PhotoKind, safety = false) => {
+    markDraftChanged(id);
     changeTask(id, (task) => {
       if (isTaskBlocked(task)) throw new Error("A prerequisite task must be completed first.");
       if (safety) {
@@ -58,7 +73,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         if (task.safety.status === "Submitted") return task;
         return { ...task, safety: { ...task.safety, saved: false, photo: { ...task.safety.photo, attached: true } } };
       }
-      if (task.status === "Completed") return task;
+      if (task.status === "Completed" || task.status === "Pending") return task;
       return { ...task, photos: task.photos?.map((photo) => photo.id === photoId ? { ...photo, attached: true } : photo) };
     });
   };
@@ -71,7 +86,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         error: "Task not found. Return to the task list and try again.",
       };
     }
-    if (task.status === "Completed") {
+    if (task.status === "Completed" || task.status === "Pending") {
       return { success: false, error: "This task has already been submitted." };
     }
     const missing = missingTaskRequirements(task);
@@ -81,8 +96,10 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         error: "Required Fields Missing",
       };
     }
-    changeTask(id, completeTask);
-    return { success: true };
+    const submitted = completeTask(task);
+    setDraftSavedPending(false);
+    changeTask(id, () => submitted);
+    return { success: true, pending: submitted.status === "Pending" };
   };
 
   const createSafety = (id: number) => {
@@ -90,6 +107,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const updateSafety = (id: number, changes: Partial<SafetyChecklist>) => {
+    markDraftChanged(id);
     changeTask(id, (task) => {
       if (!task.safety) throw new Error("Safety Checklist not found.");
       if (task.safety.status === "Submitted") return task;
@@ -98,6 +116,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   };
 
   const saveSafety = (id: number) => {
+    markDraftChanged(id);
     changeTask(id, (task) => {
       if (!task.safety) throw new Error("Safety Checklist not found.");
       return { ...task, safety: { ...task.safety, saved: true } };
@@ -124,11 +143,15 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   const beginSync = (id: number, retry = false) => changeTask(id, (task) => startSync(task, retry));
   const endSync = (id: number) => changeTask(id, finishSync);
+  const uploadPending = (id: number) => changeTask(id, (task) =>
+    task.status === "Pending" ? uploadPendingTask(task) : task,
+  );
 
   return (
     <TaskContext.Provider value={{
       tasks, updateChecklist, keepPhoto, submitTask, createSafety,
-      updateSafety, saveSafety, submitSafety, beginSync, endSync,
+      updateSafety, saveSafety, submitSafety, beginSync, endSync, uploadPending,
+      draftSavedPending, acknowledgeDraftSaved,
     }}>
       {children}
     </TaskContext.Provider>

@@ -14,19 +14,35 @@ export function missingTaskRequirements(task: Task): string[] {
 export function completeTask(task: Task): Task {
   const missing = missingTaskRequirements(task);
   if (missing.length) throw new Error(`Required information missing: ${missing.join("; ")}`);
-  if (task.status === "Completed") throw new Error("This task has already been submitted.");
+  if (task.status === "Completed" || task.status === "Pending") throw new Error("This task has already been submitted.");
+  const pending = task.scenario === "offline" || task.scenario === "uploadFailure";
   const received = task.scenario === "validation" || task.scenario === "safety";
   return {
     ...task,
-    status: "Completed",
-    completedBy: task.technician ?? "Alex Rivera",
-    completedDate: task.scenario ? task.dueDate : new Date().toLocaleDateString("en-US"),
+    status: pending ? "Pending" : "Completed",
+    completedBy: pending ? null : task.technician ?? "Alex Rivera",
+    completedDate: pending ? null : task.scenario ? task.dueDate : new Date().toLocaleDateString("en-US"),
     syncStatus: received ? "Up to date" : "Unsynced",
+    connection: pending ? "Offline" : task.connection,
     photos: task.photos?.map((photo) => ({
       ...photo,
       upload: received ? "Received by WMS" : "Saved on device",
     })),
   };
+}
+
+export function uploadPendingTask(task: Task): Task {
+  if ((task.scenario !== "offline" && task.scenario !== "uploadFailure") || task.status !== "Pending") {
+    throw new Error("No submission is pending for this task.");
+  }
+  const completed: Task = {
+    ...task,
+    status: "Completed",
+    completedBy: task.technician ?? "Alex Rivera",
+    completedDate: task.dueDate,
+  };
+  // The header control runs the initial simulated upload in one step.
+  return finishSync(startSync(completed));
 }
 
 export function newSafetyChecklist(task: Task): SafetyChecklist {

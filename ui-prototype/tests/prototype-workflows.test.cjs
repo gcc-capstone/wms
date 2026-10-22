@@ -27,6 +27,7 @@ const {
   missingSafetyRequirements,
   startSync,
   finishSync,
+  uploadPendingTask,
 } = require("../src/constants/prototype-workflows.ts");
 
 function scenario(name) {
@@ -121,7 +122,7 @@ test("Marcus draft can be saved then completed without losing details", () => {
   assert.equal(resumed.photo.attached, true);
 });
 
-test("Aisha completes offline and later synchronizes successfully", () => {
+test("Aisha stays pending offline until connection returns", () => {
   const task = attachAll(answer(scenario("offline"), {
     inspected: "Yes",
     pressure: "62 PSI",
@@ -131,10 +132,17 @@ test("Aisha completes offline and later synchronizes successfully", () => {
   assert.equal(completed.syncStatus, "Unsynced");
   assert.equal(completed.connection, "Offline");
   assert.equal(completed.photos[0].upload, "Saved on device");
-  const syncing = startSync(completed);
-  assert.equal(syncing.syncStatus, "Synchronizing");
-  assert.equal(syncing.photos[0].upload, "Uploading");
-  const synced = finishSync(syncing);
+  assert.equal(completed.status, "Pending");
+  assert.equal(completed.completedDate, null);
+  assert.equal(completed.completedBy, null);
+  assert.equal(taskCategory(completed), "Available");
+  const synced = uploadPendingTask(completed);
+  assert.equal(synced.status, "Completed");
+  assert.equal(synced.completedDate, "April 22");
+  assert.equal(synced.completedBy, "Aisha Patel");
+  assert.equal(synced.connection, "Online");
+  assert.equal(taskCategory(synced), "Completed");
+  assert.throws(() => uploadPendingTask(synced), /No submission/);
   assert.equal(synced.syncStatus, "Up to date");
   assert.equal(synced.photos[0].upload, "Received by WMS");
   assert.deepEqual(synced.checklist, completed.checklist);
@@ -146,8 +154,18 @@ test("Daniel partial photo failure retries only the failed upload", () => {
     condition: "Good",
     note: "Repair complete. No visible damage or loose connections observed.",
   }));
-  const completed = completeTask(task);
-  const failed = finishSync(startSync(completed));
+  const pending = completeTask(task);
+  assert.equal(pending.status, "Pending");
+  assert.equal(pending.completedDate, null);
+  assert.equal(taskCategory(pending), "Available");
+  assert.ok(pending.photos.every((photo) => photo.upload === "Saved on device"));
+  assert.throws(() => completeTask(pending), /already been submitted/);
+  const failed = uploadPendingTask(pending);
+  assert.equal(failed.status, "Completed");
+  assert.equal(taskCategory(failed), "Completed");
+  assert.equal(failed.completedDate, "April 23");
+  assert.deepEqual(failed.checklist, pending.checklist);
+  assert.throws(() => uploadPendingTask(failed), /No submission/);
   assert.equal(failed.syncStatus, "Upload failed");
   assert.equal(failed.photos[0].upload, "Received by WMS");
   assert.equal(failed.photos[1].upload, "Upload failed");
@@ -168,8 +186,11 @@ test("invalid transitions and duplicate completion are rejected", () => {
     attachAll(answer(task, { inspected: "Yes", pressure: "62 PSI", condition: "Good" })),
   );
   assert.throws(() => completeTask(completed), /already been submitted/);
-  assert.throws(() => startSync(completed, true), /current state/);
-  assert.throws(() => startSync(startSync(completed)), /current state/);
+  assert.throws(() => startSync(completed), /Complete the task/);
+  assert.throws(() => uploadPendingTask(task), /No submission/);
+  const uploaded = uploadPendingTask(completed);
+  assert.throws(() => startSync(uploaded, true), /current state/);
+  assert.throws(() => startSync(uploaded), /current state/);
 });
 
 test("legacy October sample tasks remain usable", () => {
@@ -225,11 +246,14 @@ test("Current tasks cannot be submitted even with a fully answered checklist", (
   assert.equal(taskCategory(task), "Current");
 });
 
-test("submitted Available tasks move to Completed without losing answers", () => {
+test("offline submissions remain Available until uploaded without losing answers", () => {
   const task = attachAll(answer(scenario("offline"), {
     inspected: "Yes", pressure: "62 PSI", condition: "Good",
   }));
-  const completed = completeTask(task);
+  const pending = completeTask(task);
+  assert.deepEqual(filterTasks([pending], "Available", ""), [pending]);
+  assert.deepEqual(filterTasks([pending], "Completed", ""), []);
+  const completed = uploadPendingTask(pending);
   assert.equal(filterTasks([completed], "Available", "").length, 0);
   assert.deepEqual(filterTasks([completed], "Completed", ""), [completed]);
   assert.deepEqual(completed.checklist, task.checklist);
@@ -249,4 +273,18 @@ test("new checklist choices start unanswered and accept Yes, No, and N/A", () =>
   const legacyTask = tasks.find((task) => task.id === 1);
   assert.equal(legacyTask.checklist.find((item) => item.id === "c4").response, null);
   assert.equal(legacyTask.checklist.find((item) => item.id === "c3").response, "N/A");
+});
+
+
+test("offline walkthrough submits as Pending even if a previous session restored connectivity", () => {
+  const task = attachAll(answer(scenario("offline"), {
+    inspected: "Yes", pressure: "62 PSI", condition: "Good",
+  }));
+  task.connection = "Online";
+  const pending = completeTask(task);
+  assert.equal(pending.status, "Pending");
+  assert.equal(pending.connection, "Offline");
+  assert.equal(pending.completedDate, null);
+  assert.equal(taskCategory(pending), "Available");
+  assert.equal(uploadPendingTask(pending).status, "Completed");
 });

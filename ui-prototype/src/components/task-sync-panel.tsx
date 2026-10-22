@@ -6,12 +6,12 @@ import { sharedStyles, theme } from "../theme/orbital-theme";
 
 export function TaskSyncPanel({ task }: { task: Task }) {
   const { beginSync, endSync } = useTasks();
-  if (task.scenario !== "offline" && task.scenario !== "uploadFailure") return null;
+  if (task.scenario !== "uploadFailure" || task.status !== "Completed") return null;
   const completed = task.status === "Completed";
   const syncing = task.syncStatus === "Synchronizing";
   const failed = task.syncStatus === "Upload failed";
   const synced = completed && task.syncStatus === "Up to date";
-  const time = task.scenario === "offline" ? "3:35 PM" : "4:10 PM";
+  const time = "4:10 PM";
 
   return (
     <View style={[sharedStyles.card, styles.panel]}>
@@ -27,9 +27,7 @@ export function TaskSyncPanel({ task }: { task: Task }) {
               ? `Connection restored at ${time}. ${task.syncAttempt === "retry" ? "Retrying only the completed-repair photograph; previously received information is unchanged." : "Sending checklist information and photographs to WMS."}`
               : completed
                 ? "Your checklist, notes, and photographs are saved on this device. They have not yet been sent to WMS."
-                : task.scenario === "offline"
-                  ? "This task is available offline. You can complete the inspection without network access; your answers and photo will be kept on this device."
-                  : "Connectivity is unreliable. Completed work and both photographs will remain on this device until synchronization succeeds."}
+                : "Connectivity is unreliable. Completed work and both photographs will remain on this device until synchronization succeeds."}
       </Text>
       {completed && (
         <>

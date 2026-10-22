@@ -1,6 +1,6 @@
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Image,
   Pressable,
@@ -19,9 +19,17 @@ import {
   TaskCategory,
 } from "../../constants/task-list";
 import { useTasks } from "../../hooks/use-tasks";
+import { TaskStatusBadge } from "../../components/task-status-badge";
+import { DraftSavedToast } from "../../components/draft-saved-toast";
 
 export default function TaskListScreen() {
-  const { tasks } = useTasks();
+  const { tasks, draftSavedPending, acknowledgeDraftSaved } = useTasks();
+  const [draftToastCount, setDraftToastCount] = useState(0);
+  useFocusEffect(useCallback(() => {
+    if (!draftSavedPending) return;
+    setDraftToastCount((count) => count + 1);
+    acknowledgeDraftSaved();
+  }, [draftSavedPending, acknowledgeDraftSaved]));
   const { width } = useWindowDimensions();
   const [searchText, setSearchText] = useState("");
   const [category, setCategory] = useState<TaskCategory>("Available");
@@ -128,6 +136,7 @@ export default function TaskListScreen() {
                 <Text style={styles.taskTitle}>{task.title}</Text>
                 <Text style={styles.dueDate}>Due {task.dueDate}</Text>
               </View>
+              {task.status === "Pending" && <TaskStatusBadge status="Pending" />}
               <Text style={styles.chevron}>›</Text>
             </Pressable>
           ))}
@@ -141,6 +150,7 @@ export default function TaskListScreen() {
           )}
         </View>
       </ScrollView>
+      {draftToastCount > 0 && <DraftSavedToast key={draftToastCount} />}
     </View>
   );
 }
