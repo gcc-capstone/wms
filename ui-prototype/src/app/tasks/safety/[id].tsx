@@ -92,6 +92,7 @@ export default function SafetyScreen() {
               {!!error && !safety[key].trim() && <Text style={styles.error}>* Field Required</Text>}
             </View>
           ))}
+          <Text accessibilityRole="header" style={[sharedStyles.heading2, { marginTop: theme.spacing.md }]}>Required Photos</Text>
           <EvidencePhotoCard
             photo={safety.photo}
             taskId={task.id}

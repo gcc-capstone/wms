@@ -1,10 +1,9 @@
-import { Image } from "expo-image";
 import { router } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { EvidencePhoto } from "../constants/tasks";
-import { photoUri } from "../constants/evidence-photos";
-import { sharedStyles, theme } from "../theme/orbital-theme";
+import { theme } from "../theme/orbital-theme";
 
 export function EvidencePhotoCard({
   photo,
@@ -19,40 +18,39 @@ export function EvidencePhotoCard({
   readOnly?: boolean;
   showMissing?: boolean;
 }) {
+  const disabled = readOnly && !photo.attached;
   const openPhoto = () => router.push({
     pathname: "/tasks/photo/[id]",
     params: { id: taskId, photoId: photo.id, safety: safety ? "true" : "false" },
   });
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.label}>{photo.label} (required)</Text>
-      {photo.attached && (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Review photo: ${photo.label}`} onPress={openPhoto}>
-          <Image
-            source={{ uri: photoUri(photo.id) }}
-            style={styles.image}
-            contentFit="contain"
-            accessibilityLabel={`Dummy photo: ${photo.label}`}
+    <View style={styles.row}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${photo.attached ? "Review" : "Take"} photo: ${photo.label}`}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        style={[styles.action, disabled && styles.disabled]}
+        onPress={openPhoto}
+      >
+        <Text style={styles.label}>{photo.label} (required)</Text>
+        <View style={styles.camera}>
+          <SymbolView
+            name={{ ios: "camera", android: "photo_camera", web: "photo_camera" }}
+            tintColor={theme.colors.navy}
+            size={26}
+            fallback={<Text style={styles.fallback}>📷</Text>}
           />
+        </View>
+      </Pressable>
+      {photo.attached && (
+        <Pressable accessibilityRole="button" accessibilityLabel={`Review attached photo: ${photo.label}`} hitSlop={8} onPress={openPhoto}>
+          <Text accessibilityLiveRegion="polite" style={[styles.status, photo.upload === "Upload failed" && styles.error]}>
+            {photo.upload === "Upload failed" ? "Photo upload failed" : "Photo attached"}
+          </Text>
         </Pressable>
       )}
-      {photo.attached ? (
-        <Text accessibilityLiveRegion="polite" style={styles.status}>
-          {photo.upload === "Upload failed"
-            ? "Upload failed - original photo still saved on device"
-            : `Photo attached · ${photo.upload}`}
-        </Text>
-      ) : !readOnly ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Take photo: ${photo.label}`}
-          style={sharedStyles.secondaryButton}
-          onPress={openPhoto}
-        >
-          <Text style={sharedStyles.secondaryButtonText}>Take Photo</Text>
-        </Pressable>
-      ) : <Text style={styles.note}>No photo attached.</Text>}
       {showMissing && !photo.attached && (
         <Text style={styles.error}>* Field Required</Text>
       )}
@@ -61,10 +59,12 @@ export function EvidencePhotoCard({
 }
 
 const styles = StyleSheet.create({
-  error: { color: "#B3261E", fontSize: 14 },
-  card: { gap: theme.spacing.sm, paddingVertical: theme.spacing.md },
-  label: { ...sharedStyles.label, color: "#4B5966", fontSize: 16, lineHeight: 22, textAlign: "center", marginBottom: theme.spacing.xs },
-  image: { width: "100%", height: 220, borderRadius: theme.radius.md },
-  note: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 19 },
+  row: { gap: theme.spacing.sm, paddingVertical: theme.spacing.md },
+  action: { flexDirection: "row", alignItems: "center", gap: theme.spacing.sm, minHeight: 44 },
+  label: { flex: 1, minWidth: 0, color: theme.colors.ink, fontSize: 16, lineHeight: 24 },
+  camera: { width: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  fallback: { fontSize: 26 },
+  disabled: { opacity: 0.5 },
   status: { color: theme.colors.navy, fontWeight: "600", fontSize: 14 },
+  error: { color: theme.colors.errorAccent, fontSize: 14 },
 });

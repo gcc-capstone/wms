@@ -391,7 +391,6 @@ test("Error tasks sort first in My Tasks, with date order within each group", ()
     { ...tasks[0], id: 704, status: "Error", dueDate: "April 20" },
   ];
   assert.deepEqual(filterTasks(entries, "My Tasks", "").map((task) => task.id), [704, 702, 701, 703]);
-  assert.deepEqual(filterTasks(entries, "My Tasks", "", ["Error"]).map((task) => task.id), [704, 702]);
   assert.deepEqual(filterTasks(entries, "Completed", ""), []);
 });
 

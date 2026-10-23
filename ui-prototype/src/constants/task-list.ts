@@ -3,7 +3,7 @@ import { Task } from "./tasks";
 export const taskCategories = ["My Tasks", "Completed"] as const;
 export type TaskCategory = (typeof taskCategories)[number];
 export type TaskDisplayStatus = "Current" | "Available" | "Pending" | "Error" | "Completed";
-export const taskStatusFilters = ["Available", "Current", "Pending", "Error"] as const;
+export const taskStatusFilters = ["Available", "Current", "Pending"] as const;
 export type TaskStatusFilter = (typeof taskStatusFilters)[number];
 
 export function isTaskBlocked(task: Task): boolean {

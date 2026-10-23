@@ -228,6 +228,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
           )}
 
           <TaskChecklist
+            task={task}
             checklist={checklist}
             answeredCount={answeredCount}
             onSetResponse={setResponse}
@@ -235,7 +236,6 @@ function TaskDetail({ task }: { task: Task | undefined }) {
             readOnly={readOnly}
             showMissing={!!submitError}
           />
-          <TaskPhotos task={task} showMissing={!!submitError} />
           {task.attachments.length > 0 && (
             <TaskAttachments attachments={task.attachments} readOnly={readOnly} />
           )}
@@ -334,6 +334,7 @@ function TaskInformation({ task }: { task: Task }) {
 }
 
 function TaskChecklist({
+  task,
   checklist,
   answeredCount,
   onSetResponse,
@@ -341,6 +342,7 @@ function TaskChecklist({
   readOnly,
   showMissing,
 }: {
+  task: Task;
   checklist: ChecklistItem[];
   answeredCount: number;
   onSetResponse: (itemId: string, response: ChecklistResponse) => void;
@@ -353,7 +355,7 @@ function TaskChecklist({
       title="Checklist"
       trailing={
         <Text style={styles.checklistCount}>
-          {answeredCount}/{checklist.length}
+          {answeredCount + (task.photos ?? []).filter((photo) => photo.attached).length}/{checklist.length + (task.photos?.length ?? 0)}
         </Text>
       }
     >
@@ -362,7 +364,7 @@ function TaskChecklist({
           <ChecklistRow
             key={item.id}
             item={item}
-            isLast={index === checklist.length - 1}
+            isLast={index === checklist.length - 1 && !task.photos?.length}
             onSetResponse={onSetResponse}
             onChangeCustomText={onChangeCustomText}
             readOnly={readOnly}
@@ -370,7 +372,9 @@ function TaskChecklist({
           />
         ))}
 
-        {checklist.length === 0 && (
+        <TaskPhotos task={task} showMissing={showMissing} />
+
+        {checklist.length === 0 && !task.photos?.length && (
           <Text style={styles.emptySectionText}>
             No checklist items for this task.
           </Text>
@@ -475,7 +479,8 @@ function ChecklistRow({
 function TaskPhotos({ task, showMissing }: { task: Task; showMissing: boolean }) {
   if (!task.photos?.length) return null;
   return (
-    <SectionCard title="Required photographs">
+    <>
+      <Text accessibilityRole="header" style={[sharedStyles.heading2, { marginTop: theme.spacing.xxl }]}>Required Photos</Text>
       {task.photos.map((photo) => (
         <EvidencePhotoCard
           key={photo.id}
@@ -485,7 +490,7 @@ function TaskPhotos({ task, showMissing }: { task: Task; showMissing: boolean })
           readOnly={task.status === "Completed" || task.status === "Pending" || task.status === "Error" || isTaskBlocked(task)}
         />
       ))}
-    </SectionCard>
+    </>
   );
 }
 
