@@ -1,18 +1,22 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { sharedStyles, theme } from "../../theme/orbital-theme";
+import { useSmoothReturn } from "../../components/android-back-transition";
 
 export default function SettingsScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const fromChecklists = returnTo === "checklists";
+  const goBack = useSmoothReturn(fromChecklists ? "/checklists" : "/tasks");
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
-          onPress={() => router.replace("/tasks")}
+          onPress={goBack}
         >
-          <Text style={styles.backButtonText}>‹ Tasks</Text>
+          <Text style={styles.backButtonText}>‹ {fromChecklists ? "Checklists" : "Tasks"}</Text>
         </Pressable>
 
         <Text style={styles.headerTitle}>Settings</Text>

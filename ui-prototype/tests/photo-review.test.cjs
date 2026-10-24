@@ -38,6 +38,13 @@ function renderReview({ safety = false, status = "Not Started", safetyStatus = "
     "../../../hooks/use-tasks": { useTasks: () => ({ tasks: [task], keepPhoto: (...args) => saved.push(args) }) },
     "../../../theme/orbital-theme": { theme: { colors: { white: "#FFFFFF", navy: "#284765" }, radius: { md: 8 } } },
   };
+  const captureSource = fs.readFileSync(require.resolve("../src/components/photo-capture.tsx"), "utf8");
+  const captureExports = {};
+  const captureCode = ts.transpileModule(captureSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+  modules["../constants/evidence-photos"] = modules["../../../constants/evidence-photos"];
+  modules["../theme/orbital-theme"] = modules["../../../theme/orbital-theme"];
+  vm.runInNewContext(captureCode, { exports: captureExports, require: (name) => { assert.ok(modules[name], name); return modules[name]; } });
+  modules["../../../components/photo-capture"] = captureExports;
   const source = fs.readFileSync(require.resolve("../src/app/tasks/photo/[id].tsx"), "utf8");
   const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } });
   const exports = {};
@@ -49,6 +56,7 @@ function renderReview({ safety = false, status = "Not Started", safetyStatus = "
   function walk(node) {
     if (!node || typeof node !== "object") return;
     if (Array.isArray(node)) return node.forEach(walk);
+    if (typeof node.type === "function") return walk(node.type(node.props));
     nodes.push(node);
     walk(node.props?.children);
   }

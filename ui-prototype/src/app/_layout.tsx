@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafetyFormProvider } from "../hooks/use-safety-forms";
 import { TaskProvider } from "../hooks/use-tasks";
 import { theme } from "../theme/orbital-theme";
 import { AndroidBackTransitionProvider } from "../components/android-back-transition";
@@ -9,6 +10,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <TaskProvider>
+        <SafetyFormProvider>
         <AndroidBackTransitionProvider>
           <Stack
             screenOptions={{
@@ -28,6 +30,7 @@ export default function RootLayout() {
             <Stack.Screen name="tasks/[id]" options={{ animationTypeForReplace: "pop" }} />
           </Stack>
         </AndroidBackTransitionProvider>
+        </SafetyFormProvider>
       </TaskProvider>
     </GestureHandlerRootView>
   );

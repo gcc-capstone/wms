@@ -123,24 +123,7 @@ export const tasks: Task[] = [
       { id: "c6", label: "Record access or right-of-way conditions", kind: "dropdown", options: ["Unrestricted access", "Gate or permission required", "Access blocked"], response: null, customText: "" },
       { id: "c7", label: "Flag any third-party attachments found on the pole", kind: "text", response: null, customText: "East anchor tension felt slightly loose — flagged for follow-up." },
     ],
-    attachments: [
-      {
-        id: "a1",
-        fileName: "Pole_Segment_Overview",
-        extension: ".jpg",
-        size: "2.4 MB",
-        createdDate: "2026-09-29",
-        createdBy: "Alex Rivera",
-      },
-      {
-        id: "a2",
-        fileName: "Field_Notes_09-29",
-        extension: ".pdf",
-        size: "184 KB",
-        createdDate: "2026-09-29",
-        createdBy: "Alex Rivera",
-      },
-    ],
+    attachments: [],
   },
   {
     id: 2,

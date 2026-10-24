@@ -4,7 +4,7 @@ import { Animated, BackHandler, Easing, Image, PixelRatio, Platform, StyleSheet,
 
 import { theme } from "../theme/orbital-theme";
 
-type Destination = "/tasks" | `/tasks/${number}` | `/tasks/safety/${number}` | `/tasks/photos/${number}`;
+type Destination = "/tasks" | "/checklists" | `/tasks/${number}` | `/tasks/safety/${number}` | `/tasks/photos/${number}` | `/checklists/form/${string}` | `/checklists/photos/${string}`;
 type Preview = {
   uri: string;
   destination: Destination;
@@ -149,13 +149,14 @@ export function AndroidBackTransitionProvider({ children }: { children: ReactNod
   );
 }
 
-export function useSmoothReturn(destination: Destination) {
+export function useSmoothReturn(destination: Destination, beforeReturn?: () => void) {
   const returnTo = useContext(BackTransitionContext);
   const navigation = useNavigation();
   const goBack = useCallback(() => {
+    beforeReturn?.();
     if (!returnTo) { router.dismissTo(destination); return; }
     returnTo(destination, () => navigation.setOptions({ animation: "none" }));
-  }, [destination, navigation, returnTo]);
+  }, [beforeReturn, destination, navigation, returnTo]);
 
   useFocusEffect(useCallback(() => {
     if (Platform.OS !== "android") return;

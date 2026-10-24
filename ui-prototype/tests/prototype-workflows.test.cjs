@@ -497,3 +497,35 @@ test("photo descriptions and deletion affect only the selected photo", () => {
   assert.equal(safetyEdited.safety.photo.description, "Standing water");
   assert.equal(changeTaskPhoto(safetyEdited, { source: "safety", index: 0 }, null).safety.photo.attached, false);
 });
+
+
+test("combined task search includes Completed and every other task status", () => {
+  const all = filterTasks(tasks, "All", "");
+  assert.equal(all.length, tasks.length);
+  assert.ok(all.some((task) => task.status === "Completed"));
+  assert.deepEqual(filterTasks(tasks, "All", "  SITE WALKDOWN ").map((task) => task.id), [5]);
+  assert.deepEqual(filterTasks(tasks, "My Tasks", "site walkdown"), []);
+  const available = filterTasks(tasks, "All", "", ["Available"]);
+  assert.ok(available.length > 0);
+  assert.ok(available.every((task) => taskDisplayStatus(task) === "Available"));
+  const completed = tasks.find((task) => task.status === "Completed");
+  assert.deepEqual(filterTasks(tasks, "All", completed.title, ["Pending"]), []);
+});
+
+
+test("task sorting supports both date directions and alphabetical order with status tags", () => {
+  const entries = [
+    { ...tasks[0], id: 801, title: "Bravo", dueDate: "April 21", status: "Not Started" },
+    { ...tasks[0], id: 802, title: "alpha", dueDate: "April 20", status: "Completed" },
+    { ...tasks[0], id: 803, title: "Charlie", dueDate: "April 22", status: "Pending" },
+    { ...tasks[0], id: 804, title: "Zebra error", dueDate: "April 30", status: "Error" },
+  ];
+  const ids = (sort, statuses = []) => filterTasks(entries, "All", "", statuses, sort).map((task) => task.id);
+  assert.deepEqual(ids("oldest"), [804, 802, 801, 803]);
+  assert.deepEqual(ids("newest"), [804, 803, 801, 802]);
+  assert.deepEqual(ids("a-z"), [804, 802, 801, 803]);
+  assert.deepEqual(ids("z-a"), [804, 803, 801, 802]);
+  assert.deepEqual(ids("a-z", ["Completed"]), [802]);
+  assert.deepEqual(ids("oldest", ["Available", "Pending"]), [801, 803]);
+  assert.deepEqual(entries.map((task) => task.id), [801, 802, 803, 804]);
+});

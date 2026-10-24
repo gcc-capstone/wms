@@ -3,17 +3,24 @@ import { Animated, PanResponder, StyleSheet, View } from "react-native";
 
 import { taskCategories, TaskCategory } from "../constants/task-list";
 
-export function TaskCategoryPager({ category, onCategoryChange, onSwipeStateChange, minHeight, children }: {
-  category: TaskCategory;
-  onCategoryChange: (category: TaskCategory) => void;
+type CategoryPagerProps<Category extends string> = {
+  categories: readonly Category[];
+  category: Category;
+  onCategoryChange: (category: Category) => void;
   onSwipeStateChange: (swiping: boolean) => void;
   minHeight: number;
-  children: (category: TaskCategory) => ReactNode;
-}) {
+  children: (category: Category) => ReactNode;
+};
+
+export function TaskCategoryPager(props: Omit<CategoryPagerProps<TaskCategory>, "categories">) {
+  return <CategoryPager categories={taskCategories} {...props} />;
+}
+
+export function CategoryPager<Category extends string>({ categories, category, onCategoryChange, onSwipeStateChange, minHeight, children }: CategoryPagerProps<Category>) {
   const [width, setWidth] = useState(0);
-  const [heights, setHeights] = useState<Partial<Record<TaskCategory, number>>>({});
+  const [heights, setHeights] = useState<Partial<Record<Category, number>>>({});
   const [offset] = useState(() => new Animated.Value(0));
-  const index = taskCategories.indexOf(category);
+  const index = categories.indexOf(category);
   const activeIndex = useRef(index);
   useLayoutEffect(() => { activeIndex.current = index; }, [index]);
   const dragStart = useRef(0);
@@ -39,15 +46,15 @@ export function TaskCategoryPager({ category, onCategoryChange, onSwipeStateChan
     },
     onPanResponderMove: (_, gesture) => {
       const position = dragStart.current + gesture.dx;
-      const lastPage = -(taskCategories.length - 1) * width;
+      const lastPage = -(categories.length - 1) * width;
       offset.setValue(position > 0 ? position * 0.2 : position < lastPage ? lastPage + (position - lastPage) * 0.2 : position);
     },
     onPanResponderRelease: (_, gesture) => {
       const horizontal = Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5;
       const commit = horizontal && (Math.abs(gesture.dx) > Math.min(45, width * 0.12) || (Math.abs(gesture.dx) > 14 && Math.abs(gesture.vx) > 0.35));
-      const target = Math.max(0, Math.min(taskCategories.length - 1, activeIndex.current + (commit ? gesture.dx < 0 ? 1 : -1 : 0)));
+      const target = Math.max(0, Math.min(categories.length - 1, activeIndex.current + (commit ? gesture.dx < 0 ? 1 : -1 : 0)));
       onSwipeStateChange(false);
-      onCategoryChange(taskCategories[target]);
+      onCategoryChange(categories[target]);
       settle(target);
     },
     onPanResponderTerminate: () => {
@@ -55,7 +62,7 @@ export function TaskCategoryPager({ category, onCategoryChange, onSwipeStateChan
       settle(activeIndex.current);
     },
     onPanResponderTerminationRequest: () => false,
-  }), [offset, width, settle, onCategoryChange, onSwipeStateChange]);
+  }), [categories, offset, width, settle, onCategoryChange, onSwipeStateChange]);
 
   return (
     <View
@@ -64,8 +71,8 @@ export function TaskCategoryPager({ category, onCategoryChange, onSwipeStateChan
       {...responder.panHandlers}
     >
       {width > 0 && (
-        <Animated.View style={[styles.track, { width: width * taskCategories.length, transform: [{ translateX: offset }] }]}>
-          {taskCategories.map((page) => (
+        <Animated.View style={[styles.track, { width: width * categories.length, transform: [{ translateX: offset }] }]}>
+          {categories.map((page) => (
             <View
               key={page}
               style={[styles.page, { width }]}

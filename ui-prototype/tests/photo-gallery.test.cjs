@@ -4,7 +4,7 @@ const test = require("node:test");
 const vm = require("node:vm");
 const ts = require("typescript");
 
-function gallery(description = "") {
+function gallery(description = "", readOnly = false, canAddPhoto = !readOnly) {
   const changes = [];
   const states = [];
   let hookIndex = 0;
@@ -46,10 +46,12 @@ function gallery(description = "") {
     function walk(node) {
       if (!node || typeof node !== "object") return;
       if (Array.isArray(node)) return node.forEach(walk);
+      if (typeof node.type === "function") return walk(node.type(node.props));
       found.push(node);
       walk(node.props?.children);
     }
-    walk(exports.TaskPhotoGallery({ task }));
+    const wrapper = exports.TaskPhotoGallery({ task });
+    walk({ ...wrapper, props: { ...wrapper.props, readOnly, canAddPhoto } });
     return found;
   }
   function button(label) {
@@ -106,4 +108,21 @@ test("trash requires confirmation and cancellation preserves the photo", () => {
   assert.equal(view.changes.length, 1);
   assert.equal(view.changes[0][2], null);
   assert.equal(view.nodes().find((node) => node.type === "Modal").props.visible, false);
+});
+
+
+test("read-only checklist galleries allow viewing but no photo edits, deletion, or adding", () => {
+  const view = gallery("Existing description", true);
+  assert.equal(view.nodes().find((node) => node.type === "Modal").props.visible, true);
+  assert.equal(view.button("Delete photo"), undefined);
+  assert.equal(view.button("Edit photo description"), undefined);
+  assert.equal(view.button("Photo description").props.disabled, true);
+  assert.equal(view.button("Add photo"), undefined);
+});
+
+
+test("task galleries hide Add photo when the task cannot accept new photos", () => {
+  const view = gallery("Existing photo", false, false);
+  assert.equal(view.button("Add photo"), undefined);
+  assert.equal(view.nodes().find((node) => node.type === "Modal").props.visible, true);
 });

@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -26,8 +27,12 @@ import {
   taskStatusFilters,
   TaskStatusFilter,
 } from "../../constants/task-list";
+import { ListSort } from "../../constants/list-sort";
+import { SearchSortOptions, SearchStatusTags } from "../../components/search-controls";
+import { Task } from "../../constants/tasks";
 import { useTasks } from "../../hooks/use-tasks";
 import { statusColors, TaskStatusBadge } from "../../components/task-status-badge";
+import { FloatingTaskNav } from "../../components/floating-task-nav";
 import { TopToast } from "../../components/top-toast";
 import { usePullToRefresh } from "../../hooks/use-pull-to-refresh";
 import { TaskCategoryPager } from "../../components/task-category-pager";
@@ -49,17 +54,62 @@ export default function TaskListScreen() {
     acknowledgeDraftSaved();
   }, [draftSavedPending, acknowledgeDraftSaved]));
   const { width, height } = useWindowDimensions();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
   const [searchText, setSearchText] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const filterButtonRef = useRef<View>(null);
   const [filterAnchor, setFilterAnchor] = useState({ right: 20, top: 0 });
+  const [sort, setSort] = useState<ListSort>("oldest");
   const [statusFilters, setStatusFilters] = useState<TaskStatusFilter[]>([]);
   const [category, setCategory] = useState<TaskCategory>("My Tasks");
   const [swipingCategory, setSwipingCategory] = useState(false);
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchText("");
+    setStatusFilters([]);
+    setSort("oldest");
+    setFilterOpen(false);
+    setSwipingCategory(false);
+    Keyboard.dismiss();
+  };
+  useFocusEffect(useCallback(() => {
+    setSearchOpen(false);
+    setSearchText("");
+    setStatusFilters([]);
+    setSort("oldest");
+    setFilterOpen(false);
+    Keyboard.dismiss();
+  }, []));
   const taskPages = useMemo(() => ({
     "My Tasks": filterTasks(tasks, "My Tasks", searchText, statusFilters),
     Completed: filterTasks(tasks, "Completed", searchText, statusFilters),
   }), [tasks, searchText, statusFilters]);
+
+  const allSearchTasks = useMemo(() => filterTasks(tasks, "All", searchText, statusFilters, sort), [tasks, searchText, statusFilters, sort]);
+  const renderTasks = (filteredTasks: Task[]) => (
+    <>
+      <View style={styles.taskList}>
+        {filteredTasks.map((task) => (
+          <Pressable key={task.id} accessibilityRole="button" accessibilityLabel={`Open ${task.title}`} style={styles.taskCard} onPress={() => router.push(`/tasks/${task.id}`)}>
+            <View style={[styles.taskCardAccent, { backgroundColor: statusColors[taskDisplayStatus(task)].accent }]} />
+            <View style={styles.taskMain}>
+              <Text style={styles.taskTitle}>{task.title}</Text>
+              <Text style={styles.dueDate}>Due {task.dueDate}</Text>
+            </View>
+            <TaskStatusBadge status={taskDisplayStatus(task)} />
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        ))}
+        {filteredTasks.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={sharedStyles.heading2}>No tasks found</Text>
+            <Text style={styles.helperText}>{searchOpen ? "Try another search." : "Try another search or task tab."}</Text>
+          </View>
+        )}
+      </View>
+    </>
+  );
 
   return (
     <View style={styles.screen}>
@@ -69,6 +119,25 @@ export default function TaskListScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
+        <View style={styles.headerActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={searchOpen ? "Close task search" : "Search tasks"}
+            accessibilityState={{ expanded: searchOpen }}
+            style={styles.iconButton}
+            onPress={() => {
+              setSwipingCategory(false);
+              setSearchOpen(!searchOpen);
+              setFilterOpen(false);
+              if (searchOpen) {
+                closeSearch();
+              } else {
+                scrollRef.current?.scrollTo({ y: 0, animated: true });
+              }
+            }}
+          >
+            <SymbolView name={{ ios: "magnifyingglass", android: "search", web: "search" }} tintColor={theme.colors.white} size={24} fallback={<Text style={styles.settingsFallback}>⌕</Text>} />
+          </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Settings"
@@ -82,6 +151,7 @@ export default function TaskListScreen() {
             fallback={<Text style={styles.settingsFallback}>⚙</Text>}
           />
         </Pressable>
+        </View>
       </View>
 
       <NativeGestureBoundary gesture={nativePullGesture}>
@@ -92,6 +162,8 @@ export default function TaskListScreen() {
           <Animated.View style={[styles.listContent, { transform: [{ translateY: offset }] }]}>
             <NativeGestureBoundary gesture={nativeScrollGesture}>
               <ScrollView
+                keyboardShouldPersistTaps="handled"
+                ref={scrollRef}
                 style={styles.listContent}
                 contentContainerStyle={[styles.page, width >= 900 && styles.pageWide]}
                 onScroll={(event) => setScrollTop(event.nativeEvent.contentOffset.y)}
@@ -102,8 +174,10 @@ export default function TaskListScreen() {
               >
 
                 <View style={styles.searchSection}>
+                  {searchOpen ? (
                   <View style={styles.searchRow}>
                   <TextInput
+                    autoFocus
                     accessibilityLabel="Search tasks"
                     value={searchText}
                     onChangeText={setSearchText}
@@ -111,31 +185,38 @@ export default function TaskListScreen() {
                     placeholderTextColor={theme.colors.textMuted}
                     style={[sharedStyles.input, styles.searchInput]}
                   />
-                    <Pressable
-                      ref={filterButtonRef}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Filter task status${statusFilters.length ? `: ${statusFilters.join(", ")}` : ": All statuses"}`}
-                      accessibilityState={{ expanded: filterOpen && category === "My Tasks", disabled: category === "Completed" }}
-                      disabled={category === "Completed"}
-                      style={[styles.filterButton, statusFilters.length > 0 && category === "My Tasks" && styles.filterButtonActive, category === "Completed" && styles.filterButtonDisabled]}
-                      onPress={() => {
-                        filterButtonRef.current?.measureInWindow((x, y, buttonWidth, buttonHeight) => {
-                          setFilterAnchor({ right: Math.max(12, width - x - buttonWidth), top: y + buttonHeight + theme.spacing.sm });
-                          setFilterOpen(true);
-                        });
-                      }}
-                    >
-                      <SymbolView
-                        name={{ ios: "line.3.horizontal.decrease", android: "filter_list", web: "filter_list" }}
-                        tintColor={theme.colors.navy}
-                        size={24}
-                        fallback={<Text style={styles.filterIconFallback}>☷</Text>}
-                      />
-                    </Pressable>
-
+                    <Pressable accessibilityRole="button" accessibilityLabel="Close task search" style={styles.searchClose} onPress={closeSearch}><Text style={styles.searchCloseText}>×</Text></Pressable>
                   </View>
+                  ) : <View style={styles.tasksHeading}><Text accessibilityRole="header" style={sharedStyles.heading1}>Tasks</Text></View>}
 
-                  <View accessibilityRole="tablist" style={styles.categoryRow}>
+                  {searchOpen && (
+                    <View style={styles.searchTools}>
+                      <SearchStatusTags statuses={taskStatusFilters} selected={statusFilters} onToggle={(status) => setStatusFilters((previous) => previous.includes(status) ? previous.filter((entry) => entry !== status) : [...previous, status])} />
+                      <Pressable
+                        ref={filterButtonRef}
+                        hitSlop={4}
+                        accessibilityRole="button"
+                        accessibilityLabel="Sort tasks"
+                        accessibilityState={{ expanded: filterOpen }}
+                        style={[styles.filterButton, sort !== "oldest" && styles.filterButtonActive]}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          filterButtonRef.current?.measureInWindow((x, y, buttonWidth, buttonHeight) => {
+                            setFilterAnchor({ right: Math.max(12, width - x - buttonWidth), top: y + buttonHeight + theme.spacing.sm });
+                            setFilterOpen(true);
+                          });
+                        }}
+                      >
+                        <SymbolView
+                          name={{ ios: "line.3.horizontal.decrease", android: "filter_list", web: "filter_list" }}
+                          tintColor={theme.colors.navy}
+                          size={24}
+                          fallback={<Text style={styles.filterIconFallback}>☷</Text>}
+                        />
+                      </Pressable>
+                    </View>
+                  )}
+                  {!searchOpen && <View accessibilityRole="tablist" style={styles.categoryRow}>
                     {taskCategories.map((option) => (
                       <Pressable
                         key={option}
@@ -149,77 +230,25 @@ export default function TaskListScreen() {
                         </Text>
                       </Pressable>
                     ))}
-                  </View>
+                  </View>}
                 </View>
 
-                <TaskCategoryPager
-                  category={category}
-                  onCategoryChange={setCategory}
-                  onSwipeStateChange={setSwipingCategory}
-                  minHeight={Math.max(240, height - 250)}
-                >
-                  {(page) => {
-                    const filteredTasks = taskPages[page];
-                    return (
-                      <>
-                        <Text style={styles.resultCount}>
-                          {filteredTasks.length} {filteredTasks.length === 1 ? "task" : "tasks"}
-                        </Text>
-                        <View style={styles.taskList}>
-                          {filteredTasks.map((task) => (
-                            <Pressable
-                              key={task.id}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Open ${task.title}`}
-                              style={styles.taskCard}
-                              onPress={() => router.push(`/tasks/${task.id}`)}
-                            >
-                              <View style={[styles.taskCardAccent, { backgroundColor: statusColors[taskDisplayStatus(task)].accent }]} />
-                              <View style={styles.taskMain}>
-                                <Text style={styles.taskTitle}>{task.title}</Text>
-                                <Text style={styles.dueDate}>Due {task.dueDate}</Text>
-                              </View>
-                              <TaskStatusBadge status={taskDisplayStatus(task)} />
-                              <Text style={styles.chevron}>›</Text>
-                            </Pressable>
-                          ))}
-                          {filteredTasks.length === 0 && (
-                            <View style={styles.emptyState}>
-                              <Text style={sharedStyles.heading2}>No tasks found</Text>
-                              <Text style={styles.helperText}>
-                                Try another search or task tab.
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </>
-                    );
-                  }}
-                </TaskCategoryPager>
+                {searchOpen ? renderTasks(allSearchTasks) : (
+                  <TaskCategoryPager category={category} onCategoryChange={setCategory} onSwipeStateChange={setSwipingCategory} minHeight={Math.max(240, height - 250)}>
+                    {(page) => renderTasks(taskPages[page])}
+                  </TaskCategoryPager>
+                )}
               </ScrollView>
             </NativeGestureBoundary>
           </Animated.View>
         </View>
       </NativeGestureBoundary>
-      <Modal transparent visible={filterOpen && category === "My Tasks"} onRequestClose={() => setFilterOpen(false)} animationType="none" statusBarTranslucent>
+      {!searchOpen && <FloatingTaskNav selected="Tasks" />}
+      <Modal transparent visible={filterOpen && searchOpen} onRequestClose={() => setFilterOpen(false)} animationType="none" statusBarTranslucent>
         <View style={styles.filterOverlay}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close task filters" style={StyleSheet.absoluteFill} onPress={() => setFilterOpen(false)} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Close task sorting" style={StyleSheet.absoluteFill} onPress={() => setFilterOpen(false)} />
           <View style={[styles.filterPanel, { top: filterAnchor.top, right: filterAnchor.right, maxWidth: width - 24 }]}>
-            <Text style={styles.filterHeading}>Task status</Text>
-            {taskStatusFilters.map((status) => (
-              <Pressable
-                key={status}
-                accessibilityRole="checkbox"
-                accessibilityLabel={status}
-                accessibilityState={{ checked: statusFilters.includes(status) }}
-                style={styles.filterOption}
-                onPress={() => setStatusFilters((previous) => previous.includes(status)
-                  ? previous.filter((entry) => entry !== status)
-                  : [...previous, status])}
-              >
-                <Text style={styles.filterText}>{statusFilters.includes(status) ? "☑" : "☐"} {status}</Text>
-              </Pressable>
-            ))}
+            <SearchSortOptions selected={sort} onSelect={(value) => { setSort(value); setFilterOpen(false); }} />
           </View>
         </View>
       </Modal>
@@ -240,6 +269,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: theme.spacing.xs },
+  tasksHeading: { minHeight: 46, justifyContent: "center" },
   settingsFallback: { color: theme.colors.white, fontSize: 20 },
   page: {
     flexGrow: 1,
@@ -255,16 +286,15 @@ const styles = StyleSheet.create({
 
   searchSection: { gap: theme.spacing.sm, zIndex: 10 },
   searchRow: { flexDirection: "row", gap: theme.spacing.sm, alignItems: "center", zIndex: 1 },
-  searchInput: { flex: 1, minWidth: 0 },
-  filterButton: { width: 46, height: 46, borderRadius: theme.radius.md, justifyContent: "center", alignItems: "center" },
+  searchInput: { flex: 1, minWidth: 0, paddingRight: 48 },
+  searchClose: { position: "absolute", right: 0, top: 0, width: 44, height: 46, alignItems: "center", justifyContent: "center" },
+  searchCloseText: { color: theme.colors.navy, fontSize: 26, lineHeight: 30 },
+  searchTools: { flexDirection: "row", gap: 6, alignItems: "center" },
+  filterButton: { width: 36, height: 36, borderRadius: theme.radius.md, justifyContent: "center", alignItems: "center" },
   filterIconFallback: { color: theme.colors.navy, fontSize: 24 },
   filterButtonActive: { backgroundColor: theme.colors.current, borderColor: theme.colors.navy },
-  filterButtonDisabled: { opacity: 0.5 },
-  filterHeading: { color: theme.colors.ink, fontSize: 18, fontWeight: "700", marginBottom: theme.spacing.sm },
-  filterText: { color: theme.colors.navy, fontSize: 18, fontWeight: "600" },
   filterOverlay: { flex: 1 },
   filterPanel: { position: "absolute", width: 300, zIndex: 20, elevation: 8, padding: theme.spacing.xl, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.lg, backgroundColor: theme.colors.white },
-  filterOption: { minHeight: 56, justifyContent: "center" },
   categoryRow: { flexDirection: "row" },
   categoryTab: {
     flex: 1,
@@ -278,7 +308,6 @@ const styles = StyleSheet.create({
   categoryText: { fontSize: 14, fontWeight: "600", color: theme.colors.textMuted },
   categoryTextSelected: { color: theme.colors.navy },
   helperText: { fontSize: 13, lineHeight: 18, color: theme.colors.textMuted },
-  resultCount: { fontSize: 13, color: theme.colors.textMuted },
   taskList: { gap: theme.spacing.sm },
   taskCard: {
     backgroundColor: theme.colors.white,

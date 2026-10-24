@@ -1,9 +1,10 @@
+import { compareListItems, ListSort } from "./list-sort";
 import { Task } from "./tasks";
 
 export const taskCategories = ["My Tasks", "Completed"] as const;
 export type TaskCategory = (typeof taskCategories)[number];
 export type TaskDisplayStatus = "Current" | "Available" | "Pending" | "Error" | "Completed";
-export const taskStatusFilters = ["Available", "Current", "Pending"] as const;
+export const taskStatusFilters = ["Available", "Current", "Pending", "Completed"] as const;
 export type TaskStatusFilter = (typeof taskStatusFilters)[number];
 
 export function isTaskBlocked(task: Task): boolean {
@@ -32,20 +33,19 @@ function dueDateOrder(value: string): number {
 
 export function filterTasks(
   tasks: Task[],
-  category: TaskCategory,
+  category: TaskCategory | "All",
   searchText: string,
   statuses: readonly TaskStatusFilter[] = [],
+  sort: ListSort = "oldest",
 ): Task[] {
   const search = searchText.trim().toLowerCase();
   return tasks.filter(
     (task) =>
-      taskCategory(task) === category &&
+      (category === "All" || taskCategory(task) === category) &&
       (category === "Completed" || statuses.length === 0 || statuses.some((status) => status === taskDisplayStatus(task))) &&
       (search.length === 0 || task.title.toLowerCase().includes(search)),
   ).sort((left, right) => {
     if ((left.status === "Error") !== (right.status === "Error")) return left.status === "Error" ? -1 : 1;
-    const leftDate = dueDateOrder(left.dueDate);
-    const rightDate = dueDateOrder(right.dueDate);
-    return leftDate === rightDate ? 0 : leftDate < rightDate ? -1 : 1;
+    return compareListItems(left.title, right.title, dueDateOrder(left.dueDate), dueDateOrder(right.dueDate), sort);
   });
 }

@@ -8,12 +8,30 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { photoUri } from "../constants/evidence-photos";
 import { nextGalleryPhoto } from "../constants/prototype-workflows";
 import { taskDisplayStatus } from "../constants/task-list";
-import { Task, TaskPhotoRef } from "../constants/tasks";
+import { EvidencePhoto, Task, TaskPhotoRef } from "../constants/tasks";
 import { useTasks } from "../hooks/use-tasks";
 import { sharedStyles, theme } from "../theme/orbital-theme";
 
+type GalleryEntry = { photo: EvidencePhoto; target: TaskPhotoRef };
+
 export function TaskPhotoGallery({ task }: { task: Task }) {
   const { editPhoto } = useTasks();
+  const photos: GalleryEntry[] = [
+    ...(task.photos ?? []).map((photo, index) => ({ photo, target: { source: "task" as const, index } })),
+    ...(task.safety ? [{ photo: task.safety.photo, target: { source: "safety" as const, index: 0 } }] : []),
+    ...(task.additionalPhotos ?? []).map((photo, index) => ({ photo, target: { source: "additional" as const, index } })),
+  ].filter(({ photo }) => photo.attached);
+  const capture = nextGalleryPhoto(task);
+  return <PhotoGallery photos={photos} canAddPhoto={taskDisplayStatus(task) === "Available"} onEditPhoto={(target, description) => editPhoto(task.id, target, description)} onAddPhoto={() => router.push({ pathname: "/tasks/photo/[id]", params: { id: task.id, photoId: capture.photo.id, safety: String(capture.safety), addPhoto: String(capture.additional), fromGallery: "true" } })} />;
+}
+
+export function PhotoGallery({ photos, canAddPhoto, readOnly = false, onEditPhoto, onAddPhoto }: {
+  photos: GalleryEntry[];
+  canAddPhoto: boolean;
+  readOnly?: boolean;
+  onEditPhoto: (target: TaskPhotoRef, description: string | null) => void;
+  onAddPhoto: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const [viewerSize, setViewerSize] = useState({ width, height });
@@ -25,17 +43,12 @@ export function TaskPhotoGallery({ task }: { task: Task }) {
   const [editing, setEditing] = useState(false);
   const [description, setDescription] = useState("");
   const [gridWidth, setGridWidth] = useState(0);
-  const photos = [
-    ...(task.photos ?? []).map((photo, index) => ({ photo, target: { source: "task" as const, index } })),
-    ...(task.safety ? [{ photo: task.safety.photo, target: { source: "safety" as const, index: 0 } }] : []),
-    ...(task.additionalPhotos ?? []).map((photo, index) => ({ photo, target: { source: "additional" as const, index } })),
-  ].filter(({ photo }) => photo.attached);
   const selected = photos.find(({ target }) => target.source === selectedRef?.source && target.index === selectedRef.index)?.photo;
   const closePreview = () => { editingSession.current = false; setSelectedRef(null); setConfirmDelete(false); setEditing(false); };
   const saveDescription = () => {
     if (!editingSession.current) return;
     editingSession.current = false;
-    if (selectedRef) editPhoto(task.id, selectedRef, description.trim());
+    if (selectedRef) onEditPhoto(selectedRef, description.trim());
     setEditing(false);
   };
   const beginOutsideTap = () => {
@@ -47,8 +60,6 @@ export function TaskPhotoGallery({ task }: { task: Task }) {
     if (editingSession.current) saveDescription();
     else closePreview();
   };
-  const canAddPhoto = taskDisplayStatus(task) === "Available";
-  const capture = nextGalleryPhoto(task);
   const tileSize = Math.max(0, (gridWidth - 2 * theme.spacing.sm) / 3);
 
   return (
@@ -65,17 +76,15 @@ export function TaskPhotoGallery({ task }: { task: Task }) {
             <Image source={{ uri: photoUri(photo.id) }} style={styles.thumbnail} contentFit="cover" accessibilityLabel={photo.label} />
           </Pressable>
         ))}
-        <Pressable
+        {canAddPhoto && !readOnly && <Pressable
           accessibilityRole="button"
           accessibilityLabel="Add photo"
-          accessibilityState={{ disabled: !canAddPhoto }}
-          disabled={!canAddPhoto}
-          style={[styles.tile, styles.addTile, { width: tileSize }, !canAddPhoto && styles.disabled]}
-          onPress={() => router.push({ pathname: "/tasks/photo/[id]", params: { id: task.id, photoId: capture.photo.id, safety: String(capture.safety), addPhoto: String(capture.additional), fromGallery: "true" } })}
+          style={[styles.tile, styles.addTile, { width: tileSize }]}
+          onPress={onAddPhoto}
         >
           <Text style={styles.plus}>+</Text>
           <Text style={styles.addLabel}>Add photo</Text>
-        </Pressable>
+        </Pressable>}
       </View>
       <Modal transparent visible={!!selected} animationType="fade" onRequestClose={() => { if (confirmDelete) setConfirmDelete(false); else if (editingSession.current) saveDescription(); else closePreview(); }} statusBarTranslucent>
         <View style={styles.overlay}>
@@ -90,14 +99,16 @@ export function TaskPhotoGallery({ task }: { task: Task }) {
 
               </View>
             ) : <ScrollView style={styles.descriptionScroll}>
-              <Pressable accessibilityRole="button" accessibilityLabel="Edit photo description" style={styles.descriptionAction} onPress={() => { setDescription(selected?.description ?? ""); editingSession.current = true; setEditing(true); }}>
+              <Pressable accessibilityRole="button" accessibilityLabel={readOnly ? "Photo description" : "Edit photo description"} disabled={readOnly} style={styles.descriptionAction} onPress={() => { setDescription(selected?.description ?? ""); editingSession.current = true; setEditing(true); }}>
                 <Text style={styles.description}>{selected?.description?.trim() ? selected.description : "No description"}</Text>
               </Pressable>
             </ScrollView>}
           </View>
+          {!readOnly && (
           <Pressable accessibilityRole="button" accessibilityLabel="Delete photo" onPress={() => { saveDescription(); setConfirmDelete(true); }} style={[styles.closeButton, { top: insets.top + theme.spacing.sm, left: insets.left + theme.spacing.sm }]}>
             <SymbolView name={{ ios: "trash", android: "delete", web: "delete" }} tintColor={theme.colors.white} size={26} fallback={<Text style={styles.editText}>🗑</Text>} />
           </Pressable>
+          )}
           <Pressable accessibilityRole="button" accessibilityLabel="Close photo preview" onPressIn={beginOutsideTap} onPress={endOutsideTap} style={[styles.closeButton, { top: insets.top + theme.spacing.sm, right: insets.right + theme.spacing.sm }]}>
             <Text style={styles.closeText}>×</Text>
           </Pressable>
@@ -108,7 +119,7 @@ export function TaskPhotoGallery({ task }: { task: Task }) {
                 <Text accessibilityRole="header" style={sharedStyles.heading2}>Delete photo?</Text>
                 <View style={styles.confirmActions}>
                   <Pressable accessibilityRole="button" style={[sharedStyles.secondaryButton, styles.confirmButton]} onPress={() => setConfirmDelete(false)}><Text style={sharedStyles.secondaryButtonText}>Cancel</Text></Pressable>
-                  <Pressable accessibilityRole="button" style={[sharedStyles.primaryButton, styles.confirmButton, styles.deleteButton]} onPress={() => { if (selectedRef) editPhoto(task.id, selectedRef, null); closePreview(); }}><Text style={sharedStyles.primaryButtonText}>Delete</Text></Pressable>
+                  <Pressable accessibilityRole="button" style={[sharedStyles.primaryButton, styles.confirmButton, styles.deleteButton]} onPress={() => { if (selectedRef) onEditPhoto(selectedRef, null); closePreview(); }}><Text style={sharedStyles.primaryButtonText}>Delete</Text></Pressable>
                 </View>
               </View>
             </View>
@@ -126,7 +137,6 @@ const styles = StyleSheet.create({
   addTile: { alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.border },
   plus: { color: theme.colors.navy, fontSize: 36, lineHeight: 40 },
   addLabel: { color: theme.colors.navy, fontSize: 14, textAlign: "center" },
-  disabled: { opacity: 0.5 },
   overlay: { flex: 1, backgroundColor: "rgba(70, 70, 70, 0.75)", alignItems: "center", justifyContent: "center", padding: theme.spacing.xl },
   editText: { color: theme.colors.white, fontSize: 16, fontWeight: "600" },
   confirmOverlay: { backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center", padding: 24 },
