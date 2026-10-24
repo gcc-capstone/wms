@@ -9,7 +9,7 @@ import { useTasks } from "../../../hooks/use-tasks";
 export default function PhotoReviewScreen() {
   const { id, photoId, safety, fromGallery, addPhoto } = useLocalSearchParams<{ id: string; photoId: string; safety?: string; fromGallery?: string; addPhoto?: string }>();
   const isSafety = safety === "true";
-  const returnToSource = useSmoothReturn(fromGallery === "true" ? `/tasks/photos/${Number(id)}` : isSafety ? `/tasks/safety/${Number(id)}` : `/tasks/${Number(id)}`);
+  const returnToSource = useSmoothReturn(fromGallery === "true" ? `/tasks/photos/${Number(id)}` : `/tasks/${Number(id)}`);
   const { tasks, keepPhoto } = useTasks();
   const task = tasks.find((entry) => entry.id === Number(id));
   const additional = addPhoto === "true";

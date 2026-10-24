@@ -79,7 +79,7 @@ for (const safety of [false, true]) {
     review.button("Use Photo").props.onPress();
     assert.deepEqual(review.saved, [[103, safety ? "hazard" : "sensor", safety, false, ""]]);
     assert.equal(review.returns, 2);
-    assert.equal(review.destinations[0], safety ? "/tasks/safety/103" : "/tasks/103");
+    assert.equal(review.destinations[0], "/tasks/103");
   });
 }
 
