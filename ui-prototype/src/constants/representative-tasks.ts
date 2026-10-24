@@ -84,6 +84,7 @@ export const representativeTasks: Task[] = [
     description: "Inspect the Pump 2 electrical control panel.",
     instructions: "Inspect the electrical control panel and document the condition. Create a Safety Checklist for any job-site hazard before beginning work.",
     checklist: [
+      { id: "electrical-safety", label: "Create electrical safety checklist", kind: "checkbox", response: null, customText: "" },
       check("panel", "Electrical control panel inspected"),
       condition(),
       text("notes", "Inspection notes"),
