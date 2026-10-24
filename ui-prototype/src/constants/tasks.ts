@@ -4,14 +4,17 @@
 */
 import { representativeTasks } from "./representative-tasks";
 
-export type TaskStatus = "Current" | "Upcoming" | "In Progress" | "Not Started" | "Completed";
+export type TaskStatus = "Current" | "Upcoming" | "In Progress" | "Not Started" | "Pending" | "Error" | "Completed";
 export type Priority = "High" | "Normal" | "Medium" | "Low";
 export type SyncStatus = "Unsynced" | "Up to date" | "Synchronizing" | "Upload failed";
 export type Scenario = "validation" | "safety" | "offline" | "uploadFailure";
 export type PhotoKind = "sticker" | "hazard" | "sensor" | "plate" | "repair";
 export type PhotoUpload = "Saved on device" | "Uploading" | "Received by WMS" | "Upload failed";
 
+export type TaskPhotoRef = { source: "task" | "safety" | "additional"; index: number };
+
 export type EvidencePhoto = {
+  description?: string;
   id: PhotoKind;
   label: string;
   attached: boolean;
@@ -34,9 +37,9 @@ export type SafetyChecklist = {
   photo: EvidencePhoto;
 };
 export type ChecklistResponse = string;
-// Each checklist item takes exactly one input form: a Yes/N/A toggle,
-// a task-specific dropdown, or a free-form text answer.
-export type ChecklistKind = "yesNo" | "dropdown" | "text";
+// Each checklist item takes exactly one input form: a Yes/No/N/A choice,
+// a checkbox, a task-specific dropdown, or a free-form text answer.
+export type ChecklistKind = "yesNo" | "checkbox" | "dropdown" | "text";
 
 export type ChecklistItem = {
   id: string;
@@ -44,10 +47,9 @@ export type ChecklistItem = {
   response: ChecklistResponse | null;
   // Free-form answer typed by the user. Only used when kind is "text".
   customText: string;
-  allowNA?: boolean;
 } & (
   | { kind: "dropdown"; options: string[] }
-  | { kind: "yesNo" | "text" }
+  | { kind: "yesNo" | "checkbox" | "text" }
 );
 
 export type Attachment = {
@@ -80,9 +82,11 @@ export type Task = {
   checklist: ChecklistItem[];
   attachments: Attachment[];
   scenario?: Scenario;
+  prerequisiteTaskId?: number;
   technician?: string;
   location?: string;
   photos?: EvidencePhoto[];
+  additionalPhotos?: EvidencePhoto[];
   safety?: SafetyChecklist;
   connection?: "Online" | "Offline" | "Poor connectivity";
   syncAttempt?: "initial" | "retry";
@@ -119,24 +123,7 @@ export const tasks: Task[] = [
       { id: "c6", label: "Record access or right-of-way conditions", kind: "dropdown", options: ["Unrestricted access", "Gate or permission required", "Access blocked"], response: null, customText: "" },
       { id: "c7", label: "Flag any third-party attachments found on the pole", kind: "text", response: null, customText: "East anchor tension felt slightly loose — flagged for follow-up." },
     ],
-    attachments: [
-      {
-        id: "a1",
-        fileName: "Pole_Segment_Overview",
-        extension: ".jpg",
-        size: "2.4 MB",
-        createdDate: "2026-09-29",
-        createdBy: "Alex Rivera",
-      },
-      {
-        id: "a2",
-        fileName: "Field_Notes_09-29",
-        extension: ".pdf",
-        size: "184 KB",
-        createdDate: "2026-09-29",
-        createdBy: "Alex Rivera",
-      },
-    ],
+    attachments: [],
   },
   {
     id: 2,
@@ -179,6 +166,7 @@ export const tasks: Task[] = [
   {
     id: 3,
     title: "Transformer Location Review",
+    prerequisiteTaskId: 104,
     dueDate: "Oct 12, 2026",
     status: "Upcoming",
     description:
@@ -208,6 +196,7 @@ export const tasks: Task[] = [
   {
     id: 4,
     title: "Right-of-Way Photo Survey",
+    prerequisiteTaskId: 103,
     dueDate: "Oct 18, 2026",
     status: "Upcoming",
     description:
@@ -299,8 +288,10 @@ export function isChecklistItemAnswered(item: ChecklistItem): boolean {
   switch (item.kind) {
     case "text":
       return item.customText.trim().length > 0;
+    case "checkbox":
+      return item.response === "Yes";
     case "yesNo":
-      return item.response === "Yes" || (item.allowNA !== false && item.response === "N/A");
+      return item.response === "Yes" || item.response === "No" || item.response === "N/A";
     case "dropdown":
       return item.response !== null && item.options.includes(item.response);
   }

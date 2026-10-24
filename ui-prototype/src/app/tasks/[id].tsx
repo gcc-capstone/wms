@@ -1,8 +1,12 @@
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
+import { SymbolView } from "expo-symbols";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  ActivityIndicator,
+  Animated,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,15 +23,12 @@ import {
   Task,
 } from "../../constants/tasks";
 import { TaskDropdown } from "../../components/task-dropdown";
-import { EvidencePhotoCard } from "../../components/evidence-photo";
 import { TaskSyncPanel } from "../../components/task-sync-panel";
-import { missingTaskRequirements } from "../../constants/prototype-workflows";
-import { isTaskBlocked } from "../../constants/task-list";
+import { isTaskBlocked, taskDisplayStatus } from "../../constants/task-list";
+import { TaskStatusBadge } from "../../components/task-status-badge";
+import { useSmoothReturn } from "../../components/android-back-transition";
 import { useTasks } from "../../hooks/use-tasks";
 import { sharedStyles, theme } from "../../theme/orbital-theme";
-
-// Horizontal swipe distance (in px) required to dismiss back to the task list.
-const SWIPE_DISMISS_THRESHOLD = 70;
 
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,23 +38,51 @@ export default function TaskDetailScreen() {
 }
 
 function TaskDetail({ task }: { task: Task | undefined }) {
-  const { submitTask, updateChecklist, createSafety } = useTasks();
+  const returnToTasks = useSmoothReturn("/tasks");
+  const { tasks, submitTask, updateChecklist, createSafety, uploadPending } = useTasks();
   const [submitError, setSubmitError] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [toastOffset] = useState(() => new Animated.Value(-140));
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponderCapture: (_, gesture) =>
-          Math.abs(gesture.dx) > 16 &&
-          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
-        onPanResponderRelease: (_, gesture) => {
-          if (Math.abs(gesture.dx) > SWIPE_DISMISS_THRESHOLD) {
-            router.replace("/tasks");
-          }
-        },
-      }),
-    []
-  );
+  useEffect(() => {
+    if (!submitting) return;
+    const timeout = setTimeout(() => {
+      setSubmitting(false);
+      setShowSuccess(true);
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [submitting]);
+
+  useEffect(() => {
+    if (!showSuccess) return;
+    toastOffset.setValue(-140);
+    const animation = Animated.timing(toastOffset, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    });
+    animation.start();
+    const timeout = setTimeout(() => setShowSuccess(false), 4000);
+    return () => {
+      clearTimeout(timeout);
+      animation.stop();
+    };
+  }, [showSuccess, toastOffset]);
+
+  // iOS uses the native stack's interactive edge gesture. Other platforms
+  // keep a rightward-only fallback without competing with native gestures.
+  const backSwipe = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_, gesture) =>
+      Platform.OS !== "ios" && gesture.x0 <= 32 && gesture.dx > 16 &&
+      gesture.dx > Math.abs(gesture.dy) * 1.5,
+    onPanResponderRelease: (_, gesture) => {
+      if (gesture.dx > 70 && gesture.dx > Math.abs(gesture.dy) * 1.5) {
+        returnToTasks();
+      }
+    },
+  }), [returnToTasks]);
 
   if (!task) {
     return (
@@ -71,7 +100,7 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   }
 
   const setResponse = (itemId: string, response: ChecklistResponse) => {
-    if (task.status === "Completed" || isTaskBlocked(task)) return;
+    if (task.status === "Completed" || task.status === "Pending" || task.status === "Error" || isTaskBlocked(task)) return;
     updateChecklist(task.id,
       task.checklist.map((item) =>
         item.id === itemId
@@ -90,11 +119,12 @@ function TaskDetail({ task }: { task: Task | undefined }) {
   const checklist = task.checklist;
   const answeredCount = checklist.filter(isChecklistItemAnswered).length;
   const completed = task.status === "Completed";
+  const pending = task.status === "Pending";
+  const failed = task.status === "Error";
+  const submitted = completed || pending || failed;
   const blocked = isTaskBlocked(task);
-  const readOnly = completed || blocked;
-  const missing = missingTaskRequirements(task);
-  const canSubmit = !readOnly && missing.length === 0;
-  const submitDisabled = !canSubmit && task.scenario !== "validation";
+  const prerequisite = tasks.find((entry) => entry.id === task.prerequisiteTaskId);
+  const readOnly = submitted || blocked;
 
   const setCustomText = (itemId: string, text: string) => {
     if (readOnly) return;
@@ -110,15 +140,49 @@ function TaskDetail({ task }: { task: Task | undefined }) {
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
-          onPress={() => router.replace("/tasks")}
+          onPress={returnToTasks}
         >
           <Text style={styles.backButtonText}>‹ Tasks</Text>
         </Pressable>
+        <View style={styles.headerStatus}>
+          {(task.scenario === "offline" || task.scenario === "uploadFailure") && (!submitted || submitting) && (
+            <View accessible accessibilityRole="image" accessibilityLabel="No connection" style={styles.connectionIcon}>
+              <SymbolView
+                name={{ ios: "wifi.slash", android: "signal_wifi_off", web: "signal_wifi_off" }}
+                tintColor={theme.colors.white}
+                size={26}
+                fallback={<Text style={styles.connectionFallback}>⊘</Text>}
+              />
+            </View>
+          )}
+          {pending && !submitting ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Pending: Simulate connection returning at ${task.scenario === "uploadFailure" ? "4:10 PM" : "3:35 PM"}`}
+              onPress={() => {
+                setShowSuccess(false);
+                uploadPending(task.id);
+              }}
+            >
+              <TaskStatusBadge status="Pending" header />
+            </Pressable>
+          ) : (
+            <TaskStatusBadge status={taskDisplayStatus(task)} header />
+          )}
+        </View>
       </View>
 
-      <View style={styles.body} {...panResponder.panHandlers}>
+      <View style={styles.body} {...backSwipe.panHandlers}>
         <ScrollView contentContainerStyle={styles.page}>
           <View style={styles.titleBlock}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="View task photos"
+              style={styles.photosButton}
+              onPress={() => router.push({ pathname: "/tasks/photos/[id]", params: { id: task.id } })}
+            >
+              <SymbolView name={{ ios: "camera", android: "photo_camera", web: "photo_camera" }} tintColor={theme.colors.navy} size={28} fallback={<Text style={styles.photosIcon}>📷</Text>} />
+            </Pressable>
             <Text style={styles.taskCode}>
               {task.taskCode} · {task.disciplineNo}
             </Text>
@@ -129,31 +193,24 @@ function TaskDetail({ task }: { task: Task | undefined }) {
           <TaskInformation task={task} />
 
           {blocked && (
-            <View style={styles.submissionNotice}>
-              <Text style={sharedStyles.heading2}>Waiting for prerequisite</Text>
-              <Text style={sharedStyles.body}>
-                A previous task must be completed before you can work on this task.
-                You can review its information, checklist, and attachments below.
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={prerequisite ? `Open prerequisite task: ${prerequisite.title}` : "Waiting for prerequisite"}
+              accessibilityState={{ disabled: !prerequisite }}
+              disabled={!prerequisite}
+              style={styles.submissionNotice}
+              onPress={() => {
+                if (prerequisite) router.push(`/tasks/${prerequisite.id}`);
+              }}
+            >
+              <Text style={[sharedStyles.heading2, styles.prerequisiteTitle]}>
+                {prerequisite ? `Waiting on task: ${prerequisite.title}` : "Waiting for prerequisite"}
               </Text>
-            </View>
+              {prerequisite && <Text accessible={false} style={styles.prerequisiteArrow}>→</Text>}
+            </Pressable>
           )}
 
           <TaskSyncPanel task={task} />
-
-          {completed && (
-            <View style={styles.submissionNotice} accessibilityLiveRegion="polite">
-              <Text style={sharedStyles.heading2}>
-                {task.syncStatus === "Up to date" ? "Task submitted" : "Task completed on device"}
-              </Text>
-              <Text style={sharedStyles.body}>
-                Completed by {task.completedBy} on {task.completedDate}. Your
-                answers are available below.
-              </Text>
-              <Text style={styles.submissionNote}>
-                Prototype only: records are kept while the app is open, not sent to a server.
-              </Text>
-            </View>
-          )}
 
           {task.scenario === "safety" && !blocked && (
             <SectionCard title="Safety Checklist">
@@ -185,18 +242,11 @@ function TaskDetail({ task }: { task: Task | undefined }) {
             readOnly={readOnly}
             showMissing={!!submitError}
           />
-          <TaskPhotos task={task} />
           {task.attachments.length > 0 && (
             <TaskAttachments attachments={task.attachments} readOnly={readOnly} />
           )}
 
-          {!readOnly && (
-            <View style={styles.submitArea}>
-              <Text style={styles.submissionNote}>
-                {canSubmit
-                  ? "All items complete. Ready to submit."
-                  : `Complete all checklist items and required photographs to submit (${answeredCount}/${checklist.length} checklist items).`}
-              </Text>
+          <View style={styles.submitArea}>
               {!!submitError && (
                 <Text accessibilityRole="alert" style={styles.submitError}>
                   {submitError}
@@ -204,32 +254,47 @@ function TaskDetail({ task }: { task: Task | undefined }) {
               )}
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ disabled: submitDisabled }}
-                disabled={submitDisabled}
-                style={[
-                  sharedStyles.primaryButton,
-                  submitDisabled && styles.submitDisabled,
-                ]}
+                accessibilityState={{ disabled: readOnly || submitting, busy: submitting }}
+                accessibilityLabel={submitting ? "Submitting task" : undefined}
+                disabled={readOnly || submitting}
+                style={[sharedStyles.primaryButton, sharedStyles.submitButton, readOnly && !submitting && styles.submittedButton]}
                 onPress={() => {
                   const result = submitTask(task.id);
+                  if (result.success) {
+                    setSubmissionMessage(result.pending ? "Offline -- Submission Pending" : "Submission Successful");
+                    setSubmitting(true);
+                  }
                   setSubmitError(result.success ? "" : result.error);
                 }}
               >
-                <Text
-                  style={[
-                    sharedStyles.primaryButtonText,
-                    submitDisabled && styles.submitDisabledText,
-                  ]}
-                >
-                  Submit
-                </Text>
+                {submitting ? (
+                  <ActivityIndicator color={theme.colors.white} size="small" />
+                ) : (
+                  <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText, readOnly && styles.submittedButtonText]}>
+                    {failed ? "Photo Upload Failed" : pending ? "Submission Pending" : completed ? `Submitted on ${formatSubmissionDate(task.completedDate)}` : "Submit"}
+                  </Text>
+                )}
               </Pressable>
-            </View>
-          )}
+          </View>
         </ScrollView>
       </View>
+      {showSuccess && (
+        <Animated.View pointerEvents="none" style={[styles.successToastContainer, { transform: [{ translateY: toastOffset }] }]}>
+          <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.successToast}>
+            {submissionMessage}
+          </Text>
+        </Animated.View>
+      )}
     </View>
   );
+}
+
+function formatSubmissionDate(value: string | null): string {
+  if (!value) return "Unknown date";
+  const numericDate = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!numericDate) return value;
+  return new Date(Number(numericDate[3]), Number(numericDate[1]) - 1, Number(numericDate[2]))
+    .toLocaleDateString("en-US", { month: "long", day: "numeric" });
 }
 
 function TaskInformation({ task }: { task: Task }) {
@@ -343,49 +408,44 @@ function ChecklistRow({
           <Text style={styles.checklistLabel}>{item.label}</Text>
         </View>
 
+        {item.kind === "checkbox" && (
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityLabel={item.label}
+            accessibilityState={{ checked: item.response === "Yes", disabled: readOnly }}
+            disabled={readOnly}
+            style={styles.checklistCheckbox}
+            onPress={() => onSetResponse(item.id, item.response === "Yes" ? "No" : "Yes")}
+          >
+            <Text style={styles.checklistCheckboxIcon}>{item.response === "Yes" ? "☑" : "☐"}</Text>
+          </Pressable>
+        )}
+
         {item.kind === "yesNo" && (
           <View style={styles.controlRow}>
-            <Pressable
+            {(["Yes", "No", "N/A"] as const).map((option) => (
+              <Pressable
+                key={option}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.label}: Yes`}
-                accessibilityState={{ selected: item.response === "Yes", disabled: readOnly }}
+                accessibilityLabel={`${item.label}: ${option}`}
+                accessibilityState={{ selected: item.response === option, disabled: readOnly }}
                 disabled={readOnly}
                 style={[
                   styles.toggleButton,
-                  item.response === "Yes" && styles.toggleButtonActive,
+                  item.response === option && styles.toggleButtonActive,
                 ]}
-                onPress={() => onSetResponse(item.id, "Yes")}
+                onPress={() => onSetResponse(item.id, option)}
               >
                 <Text
                   style={[
                     styles.toggleButtonText,
-                    item.response === "Yes" && styles.toggleButtonTextActive,
+                    item.response === option && styles.toggleButtonTextActive,
                   ]}
                 >
-                  Yes
+                  {option}
                 </Text>
-            </Pressable>
-
-            {item.allowNA !== false && <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${item.label}: N/A`}
-                accessibilityState={{ selected: item.response === "N/A", disabled: readOnly }}
-                disabled={readOnly}
-                style={[
-                  styles.toggleButton,
-                  item.response === "N/A" && styles.toggleButtonActive,
-                ]}
-                onPress={() => onSetResponse(item.id, "N/A")}
-              >
-                <Text
-                  style={[
-                    styles.toggleButtonText,
-                    item.response === "N/A" && styles.toggleButtonTextActive,
-                  ]}
-                >
-                  N/A
-                </Text>
-            </Pressable>}
+              </Pressable>
+            ))}
           </View>
         )}
       </View>
@@ -412,26 +472,9 @@ function ChecklistRow({
         />
       )}
       {showMissing && !isChecklistItemAnswered(item) && (
-        <Text style={styles.submitError}>Required: {item.label}</Text>
+        <Text style={styles.submitError}>* Field Required</Text>
       )}
     </View>
-  );
-}
-
-function TaskPhotos({ task }: { task: Task }) {
-  const { keepPhoto } = useTasks();
-  if (!task.photos?.length) return null;
-  return (
-    <SectionCard title="Required photographs">
-      {task.photos.map((photo) => (
-        <EvidencePhotoCard
-          key={photo.id}
-          photo={photo}
-          readOnly={task.status === "Completed" || isTaskBlocked(task)}
-          onKeep={() => keepPhoto(task.id, photo.id)}
-        />
-      ))}
-    </SectionCard>
   );
 }
 
@@ -597,7 +640,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.lg,
   },
 
+  photosButton: { position: "absolute", right: 0, top: -8, width: 48, height: 48, alignItems: "center", justifyContent: "center" },
+  photosIcon: { fontSize: 28 },
+
   titleBlock: {
+    paddingRight: 56,
     marginBottom: theme.spacing.xs,
   },
 
@@ -686,6 +733,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
 
+  checklistCheckbox: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  checklistCheckboxIcon: { color: theme.colors.ink, fontSize: 24, lineHeight: 30 },
   checklistLabel: {
     color: theme.colors.ink,
     fontSize: 14,
@@ -824,23 +873,48 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  submitError: { color: "#B3261E", fontSize: 14 },
   submitArea: {
     gap: theme.spacing.md,
     marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.xxl,
+    marginBottom: theme.spacing.sm,
   },
-  submitDisabled: { backgroundColor: theme.colors.mist },
-  submitDisabledText: { color: theme.colors.textMuted },
-  submitError: { color: "#B3261E", fontSize: 14 },
   submissionNotice: {
     ...sharedStyles.card,
     backgroundColor: theme.colors.mist,
     gap: theme.spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
   },
-  submissionNote: {
-    color: theme.colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
+  prerequisiteTitle: { flex: 1 },
+  prerequisiteArrow: { color: theme.colors.navy, fontSize: 28 },
+  submittedButton: { backgroundColor: "#C8CDD2" },
+  connectionIcon: { minWidth: 40, minHeight: 40, alignItems: "center", justifyContent: "center" },
+  connectionFallback: { color: theme.colors.white, fontSize: 28 },
+  headerStatus: { flexDirection: "row", alignItems: "center", gap: theme.spacing.sm },
+  submittedButtonText: { color: theme.colors.textMuted },
+  successToastContainer: {
+    position: "absolute",
+    top: 68,
+    left: 24,
+    right: 24,
+    alignItems: "center",
+    zIndex: 100,
+  },
+  successToast: {
+    backgroundColor: theme.colors.navy,
+    color: theme.colors.white,
+    borderColor: theme.colors.navy,
+    borderWidth: 1,
+    elevation: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: theme.radius.md,
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+    width: "100%",
+    maxWidth: 640,
   },
 
 });

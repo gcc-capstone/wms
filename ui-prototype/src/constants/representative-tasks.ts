@@ -1,7 +1,7 @@
 import type { ChecklistItem, EvidencePhoto, PhotoKind, Task } from "./tasks";
 
 function check(id: string, label: string): ChecklistItem {
-  return { id, label, kind: "yesNo", response: null, customText: "", allowNA: false };
+  return { id, label, kind: "yesNo", response: null, customText: "" };
 }
 
 function text(id: string, label: string): ChecklistItem {
@@ -125,7 +125,7 @@ export const representativeTasks: Task[] = [
     description: "Inspect the repaired disconnect switch in Bay 4, verify that the repair is complete, and document the condition of the equipment.",
     instructions: "Record the inspection and equipment condition, add an inspection note, and attach separate photographs of the identification plate and completed repair.",
     checklist: [
-      check("inspected", "Repair visually inspected"),
+      { ...check("inspected", "Repair visually inspected"), kind: "checkbox" },
       condition(),
       text("note", "Inspection note"),
     ],

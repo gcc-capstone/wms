@@ -3,13 +3,15 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { EvidencePhotoCard } from "../../../components/evidence-photo";
+import { useSmoothReturn } from "../../../components/android-back-transition";
 import { TaskDropdown } from "../../../components/task-dropdown";
 import { useTasks } from "../../../hooks/use-tasks";
 import { sharedStyles, theme } from "../../../theme/orbital-theme";
 
 export default function SafetyScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { tasks, updateSafety, keepPhoto, saveSafety, submitSafety } = useTasks();
+  const returnToTask = useSmoothReturn(`/tasks/${Number(id)}`);
+  const { tasks, updateSafety, saveSafety, submitSafety } = useTasks();
   const task = tasks.find((entry) => entry.id === Number(id));
   const [error, setError] = useState("");
   const safety = task?.safety;
@@ -28,7 +30,7 @@ export default function SafetyScreen() {
   return (
     <View style={sharedStyles.screen}>
       <View style={sharedStyles.header}>
-        <Pressable accessibilityRole="button" onPress={() => router.replace(`/tasks/${task.id}`)}>
+        <Pressable accessibilityRole="button" onPress={returnToTask}>
           <Text style={styles.back}>‹ Related task</Text>
         </Pressable>
         <Text style={styles.back}>{safety.status}</Text>
@@ -53,6 +55,7 @@ export default function SafetyScreen() {
             onChange={(condition) => updateSafety(task.id, { condition })}
             disabled={readOnly}
           />
+          {!!error && !safety.condition && <Text style={styles.error}>* Field Required</Text>}
           <Text style={sharedStyles.label}>Required PPE (select all that apply)</Text>
           {["Safety glasses", "Insulated gloves", "Hard hat", "Safety boots"].map((ppe) => (
             <Pressable
@@ -69,6 +72,7 @@ export default function SafetyScreen() {
               <Text style={sharedStyles.body}>{safety.ppe.includes(ppe) ? "☑" : "☐"} {ppe}</Text>
             </Pressable>
           ))}
+          {!!error && safety.ppe.length === 0 && <Text style={styles.error}>* Field Required</Text>}
           {([
             ["hazard", "Hazard description"],
             ["controlPlan", "Control plan"],
@@ -85,12 +89,16 @@ export default function SafetyScreen() {
                 multiline={key !== "crewMember"}
                 style={[sharedStyles.input, key !== "crewMember" && styles.notes]}
               />
+              {!!error && !safety[key].trim() && <Text style={styles.error}>* Field Required</Text>}
             </View>
           ))}
+          <Text accessibilityRole="header" style={[sharedStyles.heading2, { marginTop: theme.spacing.md }]}>Required Photos</Text>
           <EvidencePhotoCard
             photo={safety.photo}
+            taskId={task.id}
+            safety
+            showMissing={!!error}
             readOnly={readOnly}
-            onKeep={() => keepPhoto(task.id, "hazard", true)}
           />
           <Pressable
             accessibilityRole="checkbox"
@@ -102,21 +110,23 @@ export default function SafetyScreen() {
           >
             <Text style={sharedStyles.body}>{safety.reviewedWithCrew ? "☑" : "☐"} Safety requirements reviewed with crew</Text>
           </Pressable>
+          {!!error && !safety.reviewedWithCrew && <Text style={styles.error}>* Field Required</Text>}
         </View>
-        {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         {!readOnly && (
           <>
             <Pressable accessibilityRole="button" style={sharedStyles.secondaryButton} onPress={() => {
               saveSafety(task.id);
-              router.replace(`/tasks/${task.id}`);
+              returnToTask();
             }}>
               <Text style={sharedStyles.secondaryButtonText}>Save as draft</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" style={sharedStyles.primaryButton} onPress={() => {
+            {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+            <Pressable accessibilityRole="button" style={[sharedStyles.primaryButton, sharedStyles.submitButton]} onPress={() => {
               const result = submitSafety(task.id);
               setError(result.success ? "" : result.error);
+              if (result.success) returnToTask();
             }}>
-              <Text style={sharedStyles.primaryButtonText}>Submit Safety Checklist</Text>
+              <Text style={[sharedStyles.primaryButtonText, sharedStyles.submitButtonText]}>Submit Safety Checklist</Text>
             </Pressable>
           </>
         )}
@@ -126,10 +136,10 @@ export default function SafetyScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { width: "100%", maxWidth: 960, alignSelf: "center", padding: theme.spacing.xl, gap: theme.spacing.lg, paddingBottom: 40 },
+  page: { width: "100%", maxWidth: 960, alignSelf: "center", padding: theme.spacing.xl, gap: theme.spacing.lg, paddingBottom: 28 },
   fields: { gap: theme.spacing.sm },
   back: { color: theme.colors.white, fontSize: 16, fontWeight: "600" },
   notes: { minHeight: 90, paddingVertical: theme.spacing.sm, textAlignVertical: "top" },
-  check: { minHeight: 44, justifyContent: "center" },
   error: { color: "#B3261E", fontSize: 15, lineHeight: 22 },
+  check: { minHeight: 44, justifyContent: "center" },
 });

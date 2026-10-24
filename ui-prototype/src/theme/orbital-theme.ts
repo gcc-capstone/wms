@@ -20,6 +20,16 @@ export const theme = {
     // Brand-inspired colors
     navy: "#284765",
     gold: "#B1945D",
+    available: "#D9EBCD",
+    pending: "#F4E1A8",
+    current: "#D5E5F0",
+    completed: "#E9EDF0",
+    error: "#F8D7DA",
+    errorAccent: "#B3261E",
+    availableAccent: "#719653",
+    pendingAccent: "#B38B2F",
+    currentAccent: "#598CAB",
+    completedAccent: "#7B8994",
 
     // Neutral UI colors
     ink: "#1F2933",
@@ -179,6 +189,16 @@ export const sharedStyles = StyleSheet.create({
     ...theme.typography.button,
   },
 
+  submitButton: {
+    minHeight: 56,
+    paddingVertical: theme.spacing.md,
+  },
+  submitButtonText: {
+    fontSize: 18,
+    lineHeight: 24,
+    textAlign: "center",
+  },
+
   secondaryButton: {
     minHeight: 46,
     borderWidth: 1.5,
@@ -202,12 +222,7 @@ export const sharedStyles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     padding: theme.spacing.lg,
 
-    shadowColor: "#000000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-
-    elevation: 2,
+    boxShadow: "0px 3px 8px rgba(0, 0, 0, 0.06)",
   },
 
   cardAccent: {
