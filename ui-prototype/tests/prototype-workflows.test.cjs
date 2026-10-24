@@ -22,6 +22,10 @@ const {
   taskDisplayStatus,
 } = require("../src/constants/task-list.ts");
 const {
+  nextGalleryPhoto,
+  changeTaskPhoto,
+  attachGalleryPhoto,
+  galleryPhotoPreview,
   missingTaskRequirements,
   completeTask,
   newSafetyChecklist,
@@ -74,7 +78,7 @@ test("Sarah flow names the missing required item and keeps entered values", () =
   );
 });
 
-test("Task submission requires real text and required photos", () => {
+test("Task submission requires real text but photos are optional", () => {
   const task = answer(scenario("offline"), {
     inspected: "Yes",
     pressure: "  ",
@@ -82,7 +86,6 @@ test("Task submission requires real text and required photos", () => {
   });
   assert.deepEqual(missingTaskRequirements(task), [
     "Current pressure reading",
-    "Pressure-sensor photograph",
   ]);
   assert.throws(() => completeTask(task), /Required information missing/);
   assert.equal(isChecklistItemAnswered({ ...task.checklist[0], response: "N/A" }), true);
@@ -408,4 +411,89 @@ test("Bay 4 inspection checkbox must be checked to submit", () => {
   assert.deepEqual(missingTaskRequirements(checked), []);
   assert.equal(completeTask(checked).status, "Pending");
   assert.equal(scenario("offline").checklist.find((item) => item.id === "inspected").kind, "yesNo");
+});
+
+
+test("additional gallery photos append without changing required photos or task status", () => {
+  const original = scenario("uploadFailure");
+  const before = structuredClone(original);
+  const preview = galleryPhotoPreview(original);
+  assert.equal(preview.attached, false);
+  assert.deepEqual(original, before);
+  const once = attachGalleryPhoto(original);
+  const twice = attachGalleryPhoto(once);
+  assert.equal(once.additionalPhotos.length, 1);
+  assert.equal(twice.additionalPhotos.length, 2);
+  assert.ok(twice.additionalPhotos.every((photo) => photo.attached));
+  assert.deepEqual(twice.photos, original.photos);
+  assert.deepEqual(missingTaskRequirements(twice), missingTaskRequirements(original));
+  assert.equal(twice.status, original.status);
+  for (const status of ["Completed", "Upcoming", "Pending", "Error"]) {
+    assert.throws(() => attachGalleryPhoto({ ...original, status }), /only be added to Available/);
+  }
+});
+
+
+test("gallery capture fills required task and safety photos before adding extras", () => {
+  const task = scenario("uploadFailure");
+  const original = structuredClone(task);
+  let capture = nextGalleryPhoto(task);
+  assert.equal(capture.photo.id, "plate");
+  assert.equal(capture.additional, false);
+  assert.equal(capture.safety, false);
+  assert.deepEqual(task, original);
+  task.photos[0].attached = true;
+  capture = nextGalleryPhoto(task);
+  assert.equal(capture.photo.id, "repair");
+  assert.equal(capture.additional, false);
+  task.photos[1].attached = true;
+  assert.equal(nextGalleryPhoto(task).additional, true);
+  const safetyTask = scenario("safety");
+  safetyTask.safety = newSafetyChecklist(safetyTask);
+  safetyTask.photos?.forEach((photo) => { photo.attached = true; });
+  assert.equal(nextGalleryPhoto(safetyTask).safety, true);
+  assert.equal(nextGalleryPhoto(safetyTask).photo.id, "hazard");
+  safetyTask.safety.photo.attached = true;
+  assert.equal(nextGalleryPhoto(safetyTask).additional, true);
+});
+
+
+test("tasks submit without photos and do not upload or fail nonexistent photos", () => {
+  for (const [name, values] of [
+    ["validation", { installed: "Yes", condition: "Good", contact: "Jeffrey Fisher", clear: "Yes" }],
+    ["offline", { inspected: "Yes", pressure: "62 PSI", condition: "Good" }],
+    ["uploadFailure", { inspected: "Yes", condition: "Good", note: "Repair inspected" }],
+  ]) {
+    const task = answer(scenario(name), values);
+    assert.ok(task.photos.every((photo) => !photo.attached));
+    assert.deepEqual(missingTaskRequirements(task), []);
+    const submitted = completeTask(task);
+    const completed = submitted.status === "Pending" ? uploadPendingTask(submitted) : submitted;
+    assert.equal(completed.status, "Completed");
+    assert.ok(completed.photos.every((photo) => !photo.attached && photo.upload === "Saved on device"));
+  }
+});
+
+
+test("photo descriptions and deletion affect only the selected photo", () => {
+  const original = attachGalleryPhoto(attachGalleryPhoto(scenario("uploadFailure"), "First"), "Second");
+  const before = structuredClone(original);
+  const edited = changeTaskPhoto(original, { source: "additional", index: 1 }, "Updated");
+  assert.equal(edited.additionalPhotos[0].description, "First");
+  assert.equal(edited.additionalPhotos[1].description, "Updated");
+  assert.deepEqual(original, before);
+  const deleted = changeTaskPhoto(edited, { source: "additional", index: 0 }, null);
+  assert.equal(deleted.additionalPhotos.length, 1);
+  assert.equal(deleted.additionalPhotos[0].description, "Updated");
+  const task = attachAll(scenario("uploadFailure"));
+  const taskEdited = changeTaskPhoto(task, { source: "task", index: 0 }, "Plate");
+  assert.equal(taskEdited.photos[0].description, "Plate");
+  assert.equal(changeTaskPhoto(taskEdited, { source: "task", index: 0 }, null).photos[0].attached, false);
+  assert.equal(taskEdited.photos[1].attached, true);
+  const safetyTask = scenario("safety");
+  safetyTask.safety = newSafetyChecklist(safetyTask);
+  safetyTask.safety.photo.attached = true;
+  const safetyEdited = changeTaskPhoto(safetyTask, { source: "safety", index: 0 }, "Standing water");
+  assert.equal(safetyEdited.safety.photo.description, "Standing water");
+  assert.equal(changeTaskPhoto(safetyEdited, { source: "safety", index: 0 }, null).safety.photo.attached, false);
 });

@@ -11,7 +11,10 @@ export type Scenario = "validation" | "safety" | "offline" | "uploadFailure";
 export type PhotoKind = "sticker" | "hazard" | "sensor" | "plate" | "repair";
 export type PhotoUpload = "Saved on device" | "Uploading" | "Received by WMS" | "Upload failed";
 
+export type TaskPhotoRef = { source: "task" | "safety" | "additional"; index: number };
+
 export type EvidencePhoto = {
+  description?: string;
   id: PhotoKind;
   label: string;
   attached: boolean;
@@ -83,6 +86,7 @@ export type Task = {
   technician?: string;
   location?: string;
   photos?: EvidencePhoto[];
+  additionalPhotos?: EvidencePhoto[];
   safety?: SafetyChecklist;
   connection?: "Online" | "Offline" | "Poor connectivity";
   syncAttempt?: "initial" | "retry";

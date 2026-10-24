@@ -23,7 +23,6 @@ import {
   Task,
 } from "../../constants/tasks";
 import { TaskDropdown } from "../../components/task-dropdown";
-import { EvidencePhotoCard } from "../../components/evidence-photo";
 import { TaskSyncPanel } from "../../components/task-sync-panel";
 import { isTaskBlocked, taskDisplayStatus } from "../../constants/task-list";
 import { TaskStatusBadge } from "../../components/task-status-badge";
@@ -176,6 +175,14 @@ function TaskDetail({ task }: { task: Task | undefined }) {
       <View style={styles.body} {...backSwipe.panHandlers}>
         <ScrollView contentContainerStyle={styles.page}>
           <View style={styles.titleBlock}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="View task photos"
+              style={styles.photosButton}
+              onPress={() => router.push({ pathname: "/tasks/photos/[id]", params: { id: task.id } })}
+            >
+              <SymbolView name={{ ios: "camera", android: "photo_camera", web: "photo_camera" }} tintColor={theme.colors.navy} size={28} fallback={<Text style={styles.photosIcon}>📷</Text>} />
+            </Pressable>
             <Text style={styles.taskCode}>
               {task.taskCode} · {task.disciplineNo}
             </Text>
@@ -228,7 +235,6 @@ function TaskDetail({ task }: { task: Task | undefined }) {
           )}
 
           <TaskChecklist
-            task={task}
             checklist={checklist}
             answeredCount={answeredCount}
             onSetResponse={setResponse}
@@ -334,7 +340,6 @@ function TaskInformation({ task }: { task: Task }) {
 }
 
 function TaskChecklist({
-  task,
   checklist,
   answeredCount,
   onSetResponse,
@@ -342,7 +347,6 @@ function TaskChecklist({
   readOnly,
   showMissing,
 }: {
-  task: Task;
   checklist: ChecklistItem[];
   answeredCount: number;
   onSetResponse: (itemId: string, response: ChecklistResponse) => void;
@@ -355,7 +359,7 @@ function TaskChecklist({
       title="Checklist"
       trailing={
         <Text style={styles.checklistCount}>
-          {answeredCount + (task.photos ?? []).filter((photo) => photo.attached).length}/{checklist.length + (task.photos?.length ?? 0)}
+          {answeredCount}/{checklist.length}
         </Text>
       }
     >
@@ -364,7 +368,7 @@ function TaskChecklist({
           <ChecklistRow
             key={item.id}
             item={item}
-            isLast={index === checklist.length - 1 && !task.photos?.length}
+            isLast={index === checklist.length - 1}
             onSetResponse={onSetResponse}
             onChangeCustomText={onChangeCustomText}
             readOnly={readOnly}
@@ -372,9 +376,7 @@ function TaskChecklist({
           />
         ))}
 
-        <TaskPhotos task={task} showMissing={showMissing} />
-
-        {checklist.length === 0 && !task.photos?.length && (
+        {checklist.length === 0 && (
           <Text style={styles.emptySectionText}>
             No checklist items for this task.
           </Text>
@@ -473,24 +475,6 @@ function ChecklistRow({
         <Text style={styles.submitError}>* Field Required</Text>
       )}
     </View>
-  );
-}
-
-function TaskPhotos({ task, showMissing }: { task: Task; showMissing: boolean }) {
-  if (!task.photos?.length) return null;
-  return (
-    <>
-      <Text accessibilityRole="header" style={[sharedStyles.heading2, { marginTop: theme.spacing.xxl }]}>Required Photos</Text>
-      {task.photos.map((photo) => (
-        <EvidencePhotoCard
-          key={photo.id}
-          photo={photo}
-          taskId={task.id}
-          showMissing={showMissing}
-          readOnly={task.status === "Completed" || task.status === "Pending" || task.status === "Error" || isTaskBlocked(task)}
-        />
-      ))}
-    </>
   );
 }
 
@@ -656,7 +640,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing.lg,
   },
 
+  photosButton: { position: "absolute", right: 0, top: -8, width: 48, height: 48, alignItems: "center", justifyContent: "center" },
+  photosIcon: { fontSize: 28 },
+
   titleBlock: {
+    paddingRight: 56,
     marginBottom: theme.spacing.xs,
   },
 

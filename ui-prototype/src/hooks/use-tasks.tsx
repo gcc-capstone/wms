@@ -4,10 +4,13 @@ import {
   ChecklistItem,
   PhotoKind,
   SafetyChecklist,
+  TaskPhotoRef,
   Task,
   tasks as initialTasks,
 } from "../constants/tasks";
 import {
+  attachGalleryPhoto,
+  changeTaskPhoto,
   completeTask,
   finishSync,
   missingSafetyRequirements,
@@ -17,13 +20,14 @@ import {
   uploadPendingTask,
   unlockTaskDependencies,
 } from "../constants/prototype-workflows";
-import { isTaskBlocked } from "../constants/task-list";
+import { isTaskBlocked, taskDisplayStatus } from "../constants/task-list";
 
 type SubmitResult = { success: true; pending?: boolean } | { success: false; error: string };
 type TaskStore = {
   tasks: Task[];
   updateChecklist: (id: number, checklist: ChecklistItem[]) => void;
-  keepPhoto: (id: number, photoId: PhotoKind, safety?: boolean) => void;
+  keepPhoto: (id: number, photoId: PhotoKind, safety?: boolean, additional?: boolean, description?: string) => void;
+  editPhoto: (id: number, target: TaskPhotoRef, description: string | null) => void;
   submitTask: (id: number) => SubmitResult;
   createSafety: (id: number) => void;
   updateSafety: (id: number, changes: Partial<SafetyChecklist>) => void;
@@ -65,18 +69,25 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const keepPhoto = (id: number, photoId: PhotoKind, safety = false) => {
+  const keepPhoto = (id: number, photoId: PhotoKind, safety = false, additional = false, description = "") => {
     markDraftChanged(id);
     changeTask(id, (task) => {
       if (isTaskBlocked(task)) throw new Error("A prerequisite task must be completed first.");
+      if (taskDisplayStatus(task) !== "Available") return task;
+      if (additional) return attachGalleryPhoto(task, description);
       if (safety) {
         if (!task.safety) throw new Error("Create a Safety Checklist first.");
         if (task.safety.status === "Submitted") return task;
-        return { ...task, safety: { ...task.safety, saved: false, photo: { ...task.safety.photo, attached: true } } };
+        return { ...task, safety: { ...task.safety, saved: false, photo: { ...task.safety.photo, attached: true, description } } };
       }
       if (task.status === "Completed" || task.status === "Pending" || task.status === "Error") return task;
-      return { ...task, photos: task.photos?.map((photo) => photo.id === photoId ? { ...photo, attached: true } : photo) };
+      return { ...task, photos: task.photos?.map((photo) => photo.id === photoId ? { ...photo, attached: true, description } : photo) };
     });
+  };
+
+  const editPhoto = (id: number, target: TaskPhotoRef, description: string | null) => {
+    markDraftChanged(id);
+    changeTask(id, (task) => changeTaskPhoto(task, target, description));
   };
 
   const submitTask = (id: number): SubmitResult => {
@@ -150,7 +161,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   return (
     <TaskContext.Provider value={{
-      tasks, updateChecklist, keepPhoto, submitTask, createSafety,
+      tasks, updateChecklist, keepPhoto, editPhoto, submitTask, createSafety,
       updateSafety, saveSafety, submitSafety, beginSync, endSync, uploadPending,
       draftSavedPending, acknowledgeDraftSaved,
     }}>
