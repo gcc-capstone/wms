@@ -39,7 +39,7 @@ export default function TaskDetailScreen() {
 
 function TaskDetail({ task }: { task: Task | undefined }) {
   const returnToTasks = useSmoothReturn("/tasks");
-  const { tasks, submitTask, updateChecklist, createSafety, uploadPending } = useTasks();
+  const { tasks, submitTask, updateChecklist, uploadPending } = useTasks();
   const [submitError, setSubmitError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState("");
@@ -211,28 +211,6 @@ function TaskDetail({ task }: { task: Task | undefined }) {
           )}
 
           <TaskSyncPanel task={task} />
-
-          {task.scenario === "safety" && !blocked && (
-            <SectionCard title="Safety Checklist">
-              <Text style={sharedStyles.body}>
-                {task.safety
-                  ? `${task.safety.status}${task.safety.saved && task.safety.status === "Draft" ? " saved" : ""} · Related task: ${task.title}`
-                  : "Create a Safety Checklist associated with this job."}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                style={sharedStyles.secondaryButton}
-                onPress={() => {
-                  createSafety(task.id);
-                  router.push(`/tasks/safety/${task.id}`);
-                }}
-              >
-                <Text style={sharedStyles.secondaryButtonText}>
-                  {task.safety ? task.safety.status === "Draft" ? "Open draft Safety Checklist" : "View submitted Safety Checklist" : "Create Safety Checklist"}
-                </Text>
-              </Pressable>
-            </SectionCard>
-          )}
 
           <TaskChecklist
             checklist={checklist}

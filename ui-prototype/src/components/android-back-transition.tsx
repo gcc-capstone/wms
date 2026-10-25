@@ -4,7 +4,7 @@ import { Animated, BackHandler, Easing, Image, PixelRatio, Platform, StyleSheet,
 
 import { theme } from "../theme/orbital-theme";
 
-type Destination = "/tasks" | "/checklists" | `/tasks/${number}` | `/tasks/safety/${number}` | `/tasks/photos/${number}` | `/checklists/form/${string}` | `/checklists/photos/${string}`;
+type Destination = "/tasks" | "/checklists" | `/tasks/${number}` | `/tasks/photos/${number}` | `/checklists/form/${string}` | `/checklists/photos/${string}`;
 type Preview = {
   uri: string;
   destination: Destination;
