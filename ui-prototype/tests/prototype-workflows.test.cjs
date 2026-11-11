@@ -529,3 +529,40 @@ test("task sorting supports both date directions and alphabetical order with sta
   assert.deepEqual(ids("oldest", ["Available", "Pending"]), [801, 803]);
   assert.deepEqual(entries.map((task) => task.id), [801, 802, 803, 804]);
 });
+
+
+test("Bay 4 upload fails with any attached photo and completes after retry", () => {
+  for (const source of ["plate", "repair", "gallery"]) {
+    let task = answer(scenario("uploadFailure"), { inspected: "Yes", condition: "Good", note: "Repair inspected" });
+    if (source === "gallery") {
+      task = attachGalleryPhoto(attachGalleryPhoto(task, "First gallery photo"), "Second gallery photo");
+    } else {
+      task.photos = task.photos.map((photo) => ({ ...photo, attached: photo.id === source }));
+    }
+    const pending = completeTask(task);
+    assert.equal(pending.status, "Pending");
+    const failed = uploadPendingTask(pending);
+    assert.equal(failed.status, "Error");
+    assert.equal(failed.completedDate, null);
+    assert.equal(taskCategory(failed), "My Tasks");
+    const attached = [...(failed.photos ?? []), ...(failed.additionalPhotos ?? [])].filter((photo) => photo.attached);
+    assert.equal(attached.filter((photo) => photo.upload === "Upload failed").length, 1);
+    assert.equal(attached.length, source === "gallery" ? 2 : 1);
+    const retry = startSync(failed, true);
+    const retryPhotos = [...(retry.photos ?? []), ...(retry.additionalPhotos ?? [])].filter((photo) => photo.attached);
+    assert.equal(retryPhotos.filter((photo) => photo.upload === "Uploading").length, 1);
+    const completed = finishSync(retry);
+    assert.equal(completed.status, "Completed");
+    assert.equal(completed.syncStatus, "Up to date");
+    assert.ok([...(completed.photos ?? []), ...(completed.additionalPhotos ?? [])].filter((photo) => photo.attached).every((photo) => photo.upload === "Received by WMS"));
+    assert.deepEqual(completed.checklist, pending.checklist);
+    if (source === "gallery") assert.deepEqual(completed.additionalPhotos.map((photo) => photo.description), ["First gallery photo", "Second gallery photo"]);
+  }
+});
+
+test("Pump 4 gallery photos upload successfully without the Bay 4 failure scenario", () => {
+  const task = attachGalleryPhoto(answer(scenario("offline"), { inspected: "Yes", pressure: "62 PSI", condition: "Good" }), "Sensor photo");
+  const completed = uploadPendingTask(completeTask(task));
+  assert.equal(completed.status, "Completed");
+  assert.equal(completed.additionalPhotos[0].upload, "Received by WMS");
+});

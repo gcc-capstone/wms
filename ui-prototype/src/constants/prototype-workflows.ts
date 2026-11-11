@@ -1,4 +1,4 @@
-import { isChecklistItemAnswered, SafetyChecklist, Task, TaskPhotoRef } from "./tasks";
+import { isChecklistItemAnswered, EvidencePhoto, SafetyChecklist, Task, TaskPhotoRef } from "./tasks";
 import { createPhoto } from "./representative-tasks";
 import { isTaskBlocked, taskDisplayStatus } from "./task-list";
 
@@ -26,6 +26,10 @@ export function completeTask(task: Task): Task {
   if (task.status === "Completed" || task.status === "Pending" || task.status === "Error") throw new Error("This task has already been submitted.");
   const pending = task.scenario === "offline" || task.scenario === "uploadFailure";
   const received = task.scenario === "validation" || task.scenario === "safety";
+  const submitPhoto = (photo: EvidencePhoto): EvidencePhoto => ({
+    ...photo,
+    upload: received && photo.attached ? "Received by WMS" : "Saved on device",
+  });
   return {
     ...task,
     status: pending ? "Pending" : "Completed",
@@ -33,10 +37,8 @@ export function completeTask(task: Task): Task {
     completedDate: pending ? null : task.scenario ? task.dueDate : new Date().toLocaleDateString("en-US"),
     syncStatus: received ? "Up to date" : "Unsynced",
     connection: pending ? "Offline" : task.connection,
-    photos: task.photos?.map((photo) => ({
-      ...photo,
-      upload: received && photo.attached ? "Received by WMS" : "Saved on device",
-    })),
+    photos: task.photos?.map(submitPhoto),
+    additionalPhotos: task.additionalPhotos?.map(submitPhoto),
   };
 }
 
@@ -88,32 +90,41 @@ export function startSync(task: Task, retry = false): Task {
   if (retry ? task.syncStatus !== "Upload failed" : task.syncStatus !== "Unsynced") {
     throw new Error("Synchronization cannot begin from the current state.");
   }
+  const uploadPhoto = (photo: EvidencePhoto): EvidencePhoto => ({
+    ...photo,
+    upload: !photo.attached || photo.upload === "Received by WMS" ? photo.upload : "Uploading",
+  });
   return {
     ...task,
     connection: "Online",
     syncStatus: "Synchronizing",
     syncAttempt: retry ? "retry" : "initial",
-    photos: task.photos?.map((photo) => ({
-      ...photo,
-      upload: !photo.attached || photo.upload === "Received by WMS" ? photo.upload : "Uploading",
-    })),
+    photos: task.photos?.map(uploadPhoto),
+    additionalPhotos: task.additionalPhotos?.map(uploadPhoto),
   };
 }
 
 export function finishSync(task: Task): Task {
   if (task.syncStatus !== "Synchronizing") throw new Error("Synchronization is not in progress.");
-  const failRepair = task.scenario === "uploadFailure" && task.syncAttempt === "initial" &&
-    (task.photos ?? []).some((photo) => photo.id === "repair" && photo.attached);
+  // Prefer the original repair photo, but any submitted task photo can fail.
+  const failedPhoto = task.scenario === "uploadFailure" && task.syncAttempt === "initial"
+    ? task.photos?.find((photo) => photo.attached && photo.id === "repair") ??
+      task.photos?.find((photo) => photo.attached) ??
+      task.additionalPhotos?.find((photo) => photo.attached)
+    : undefined;
+  const uploadFailed = failedPhoto !== undefined;
+  const finishPhoto = (photo: EvidencePhoto): EvidencePhoto => ({
+    ...photo,
+    upload: !photo.attached ? photo.upload : photo === failedPhoto ? "Upload failed" : "Received by WMS",
+  });
   return {
     ...task,
-    status: failRepair ? "Error" : "Completed",
-    completedBy: failRepair ? null : task.technician ?? "Alex Rivera",
-    completedDate: failRepair ? null : task.completedDate ?? task.dueDate,
-    syncStatus: failRepair ? "Upload failed" : "Up to date",
-    photos: task.photos?.map((photo) => ({
-      ...photo,
-      upload: !photo.attached ? photo.upload : failRepair && photo.id === "repair" ? "Upload failed" : "Received by WMS",
-    })),
+    status: uploadFailed ? "Error" : "Completed",
+    completedBy: uploadFailed ? null : task.technician ?? "Alex Rivera",
+    completedDate: uploadFailed ? null : task.completedDate ?? task.dueDate,
+    syncStatus: uploadFailed ? "Upload failed" : "Up to date",
+    photos: task.photos?.map(finishPhoto),
+    additionalPhotos: task.additionalPhotos?.map(finishPhoto),
   };
 }
 
