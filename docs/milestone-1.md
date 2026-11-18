@@ -2,7 +2,7 @@
 
 ### Notice ###
 
-We will not be implementing the separate tabs for "My Tasks" and "Completed Tasks". We will not have any data store locally, though it would be a "nice to have" for this milestone. 
+We will not be implementing the separate tabs for "My Tasks" and "Completed Tasks". We will not have any data store locally, though it would be a "nice to have" for this milestone.   
 
 ### Functionality Target 1
 Users can sign into WMS Mobile.
@@ -25,10 +25,10 @@ Users cannot modify completed tasks.
 
 ### Individual Responsibilites
 
-**Luca:**
+**Luca:** Build the React frontend for entering answers to a checklist item in a task.
 
-**Luke:**
+**Luke:** Build the something something to store submitted answers and update status for submitted tasks.
 
-**Hudson:**
+**Hudson:** Build the frontend for the sign in and main page to display tasks.
 
-**Anna:**
+**Anna:** Build the frontend for viewing completed tasks.
