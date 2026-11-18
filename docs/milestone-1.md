@@ -27,8 +27,8 @@ Users cannot modify completed tasks.
 
 **Luca:** Build the React frontend for entering answers to a checklist item in a task.
 
-**Luke:** Build the something something to store submitted answers and update status for submitted tasks.
+**Luke:** Build the React frontend to differentiate completed and active tasks, making completed tasks unable to be modified.
 
-**Hudson:** Build the frontend for the sign in and main page to display tasks.
+**Hudson:** Build the React frontend to pull task data from the backend and return submitted task data to the backend, updating the task status throughout.
 
-**Anna:** Build the frontend for viewing completed tasks.
+**Anna:** Build the frontend capability for user authentication and access to view other pages.
