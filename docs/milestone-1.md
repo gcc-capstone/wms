@@ -2,7 +2,7 @@
 
 ### Notice ###
 
-We will not be implementing the separate tabs for "My Tasks" and "Completed Tasks". We will not have any data store locally, though it would be a "nice to have" for this milestone.   
+We will not be implementing the separate tabs for "My Tasks" and "Completed Tasks". We will not have any data stored locally, though it would be a "nice to have" for this milestone.   
 
 ### Functionality Target 1
 Users can sign into WMS Mobile.
