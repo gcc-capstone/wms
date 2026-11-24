@@ -12,7 +12,12 @@ Luca Cosentino, Hudson Hadley, Anna Hutchins, Luke Murray under the direction of
 
 Field personnel at Orbital will be using a mobile device at work locations that may or may not have internet access. While at these sites, they can log into their account and view assigned tasks. Field personnel can open, review, save, attach files to, and complete existing assigned tasks from their mobile device and sync it with their servers once internet access is established.
 
-Authorized admins at Orbital will be able to control and monitor field personnel as well as monitor their actions done on the application. While on the mobile application, admins will not create projects, assign tasks, nor manage the entire work management system. Admins still retain privileges from their desktop application.
+Authorized admins at Orbital will be able to control and monitor field personnel as well as monitor their actions. While on the mobile application, admins will not create projects, assign tasks, nor manage the entire work management system.
+ Admins still retain privileges from their desktop application.
+
+ > [!IMPORTANT]
+> **INSTRUCTOR COMMENT — ACTION REQUIRED**
+> I dont understand the point of the previous paragraph -- admins can control field personnel?  I think the idea of monitoring is good because you are building the communication of the completed tasks. I think you should remove the last two sentences - perhaps add something about partial report uploads - but i dont see anything else here unless you are building something for admins other than the endpoint for their reports and perhaps a couple of error messages.
 
 ### Representative Tasks
 
@@ -31,9 +36,18 @@ The tasks ensure that the design is based on actual user workflows rather than i
 
 
 #### 3. User modifies tasks while offline
-Brian is preparing for a pipe inspection project the next day and wants to look for all the tasks he could need to work on. He searches for "pipe inspection" and filters by current task. He sees five upcoming tasks associated with this project and looks for the ones due the next day, then downloads the files, images, and checklist information he will need for offline work. The next day, in the field, Brian wants to modify a specific maintenance task he had downloaded with more information. He finds it among his other downloaded tasks and takes a few pictures of some wear on the piping and attaches them to the task. He then adds descriptions to each image on the location of the pipes in the photos. He also updates a few fields of the checklist connected to the task with information on pipe pressure. He saves the draft of the task to work on later after his lunch break. He sees the status indicating the task is saved locally and waiting to synchronize.
+Brian is preparing for a pipe inspection project the next day and wants to review the required work. He searches for "pipe inspection" and filters by current task. He sees five upcoming tasks associated with this project and looks for the ones due the next day. He downloads the files, images, and checklist information he will need for offline work.
+> [!IMPORTANT]
+> **INSTRUCTOR COMMENT — ACTION REQUIRED**
+> I think the above should be automatic - i dont think brian should have to perform an action to download anything - am i missing something?
+
+ The next day, in the field, Brian wants to modify a specific maintenance task he had downloaded with more information. He finds it among his other downloaded tasks and takes a few pictures of some wear on the piping and attaches them to the task. He then adds descriptions to each image on the location of the pipes in the photos. He also updates a few fields of the checklist connected to the task with information on pipe pressure. He saves the draft of the task to work on later after his lunch break. He sees the status indicating the task is saved locally and waiting to synchronize.
 
 #### 4. User submits a task
+> [!IMPORTANT]
+> **INSTRUCTOR COMMENT — ACTION REQUIRED**
+>seems like this should be mvp?
+
 Melinda is in the field and has just completed an installation inspection. She enters comments about the installation status, location, and model into the fields of the checklist, making sure all required fields are filled. She reviews the task checklist, safety checklist, and images attached to the task and attempts to submit a task-completion request. She is alerted to a missing required task field, so she goes through the checklist again and updates a missing text field. On submitting a second time, she notices that her completion was saved locally and is waiting for synchronization. She walks into a nearby building with internet connection and receives confirmation that WMS accepted the completed task. She closes the app and leaves the work site in her blue 2005 mini cooper R50.
 
 #### 5. Online user creates and submits a safety checklist 
@@ -42,14 +56,24 @@ Melinda is in the field and has just completed an installation inspection. She e
 #### 7. User signs out
 Janelle is in the middle of a work day when she is alerted to her authentication expiring. She logs back in and remains signed in for the rest of the day, and then signs out of WMS mobile once finished with work.
 
+> [!IMPORTANT]
+> **INSTRUCTOR COMMENT — ACTION REQUIRED**
+> Did they ask for this?
+
 #### 8. Offline user retries a failed submission
 Myron takes a picture of a leaky ceiling to attach to one of his tasks when offline, and sees that it's pending. He also completes the task checklist and submits it. Later when online, he sees that the image failed to upload and the checklist changes failed. He retries both changes using the saved local changes on his device, and the submission is successful.
+
+> [!IMPORTANT]
+> **INSTRUCTOR COMMENT — ACTION REQUIRED**
+> should this be automatic? also this seems like mvp...
 
 
 #### 9. User refreshes list of assigned tasks
 Erin is offline working on a downloaded task which is assigned to multiple users. She thinks another worker completed the task already but isn't sure. When Erin is back online, she refreshes her list of tasks and sees that it's been completed.
 
-
+> [!IMPORTANT]
+> **INSTRUCTOR COMMENT — ACTION REQUIRED**
+> Did they ask for this?  I would rather work on other features.
 
 
 ### Related Work
@@ -99,6 +123,11 @@ The primary difference is the scope of the application and the workflow surround
 Our application will have a much narrower focus. Workers receive assigned tasks and complete them. They will not be responsible for creating project schedules, managing construction drawings, coordinating project participants, or managing the broader project. Our system instead focuses on the actions directly associated with completing assigned fieldwork.
 
 There is also a difference in the intended environment. Fieldwire is specifically designed for construction teams and jobsites, while our system is being developed for employees performing fieldwork for a company in the industrial sector. Although the environments differ, many of the representative tasks completing assigned work, documenting that work, performing inspections or safety checks, and updating task status are similar.
+
+> [!IMPORTANT]
+> **INSTRUCTOR COMMENT — ACTION REQUIRED**
+>
+> Please add numbered in-text citations (e.g., [1], [2]) throughout your Related Work section and use the corresponding numbers in your bibliography. 
 
 ### Bibliography
 Planera. “Modern CPM Scheduling | Planera,” n.d. [https://www.planera.io/]().
